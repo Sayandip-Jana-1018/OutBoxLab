@@ -104,9 +104,18 @@ export default function ComposePage() {
     void loadSenders();
   }, [loadSenders]);
 
-  // Default the campaign cap to the selected mailbox's own cap.
+  /**
+   * Adopt the selected mailbox's own limits whenever the mailbox changes.
+   *
+   * Previously this only filled the cap when it was still blank, so switching
+   * from a demo mailbox to a real one silently kept the old cap and gap - the
+   * form showed "cap 5 / gap 2000" while the chosen mailbox was 20 / 5000, and
+   * the pacer then quietly overrode the gap at runtime anyway.
+   */
   React.useEffect(() => {
-    if (selectedSender && hourlyLimit === "") setHourlyLimit(selectedSender.hourlyLimit);
+    if (!selectedSender) return;
+    setHourlyLimit(selectedSender.hourlyLimit);
+    setDelayMs((current) => Math.max(current, selectedSender.minDelayMs));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSender?.id]);
 
