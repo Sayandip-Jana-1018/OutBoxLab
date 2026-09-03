@@ -23,6 +23,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { GlassCard } from "@/components/ui/glass-card";
 import Silk from "@/components/react-bits/Silk";
 import MoltenMetal from "@/components/react-bits/MoltenMetal";
+import { useTheme } from "next-themes";
 import { useThemeColor } from "@/context/theme-context";
 import { useAuth } from "@/context/auth-context";
 
@@ -171,6 +172,7 @@ function ArchitectureDiagram() {
 
 export default function Home() {
   const { themeColor, backgroundType, silkConfig, moltenMetalConfig } = useThemeColor();
+  const { resolvedTheme } = useTheme();
   const { user } = useAuth();
 
   return (
@@ -185,6 +187,7 @@ export default function Home() {
               scale={silkConfig.scale}
               noiseIntensity={silkConfig.noiseIntensity}
               rotation={silkConfig.rotation}
+              lightMode={resolvedTheme === "light"}
             />
           </div>
         ) : (

@@ -1,8 +1,18 @@
 /* eslint-disable react/no-unknown-property */
 import React, { forwardRef, useMemo, useRef, useLayoutEffect, useEffect } from 'react';
-import { Canvas, useFrame, useThree, RootState } from '@react-three/fiber';
+import { Canvas, useFrame, useThree, type RootState } from '@react-three/fiber';
 import { Color, Mesh, ShaderMaterial } from 'three';
-import { IUniform } from 'three';
+import { type IUniform } from 'three';
+
+type NormalizedRGB = [number, number, number];
+
+const hexToNormalizedRGB = (hex: string): NormalizedRGB => {
+  const clean = hex.replace('#', '');
+  const r = parseInt(clean.slice(0, 2), 16) / 255;
+  const g = parseInt(clean.slice(2, 4), 16) / 255;
+  const b = parseInt(clean.slice(4, 6), 16) / 255;
+  return [r, g, b];
+};
 
 interface UniformValue<T = number | Color> {
   value: T;
@@ -14,6 +24,7 @@ interface SilkUniforms {
   uNoiseIntensity: UniformValue<number>;
   uColor: UniformValue<Color>;
   uRotation: UniformValue<number>;
+  uLightMode: UniformValue<number>;
   uTime: UniformValue<number>;
   [uniform: string]: IUniform;
 }
@@ -39,27 +50,14 @@ uniform float uSpeed;
 uniform float uScale;
 uniform float uRotation;
 uniform float uNoiseIntensity;
+uniform float uLightMode;
 
-// Smooth 2D noise
-vec2 hash2(vec2 p) {
-  p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
-  return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
-}
+const float e = 2.71828182845904523536;
 
-float snoise(vec2 p) {
-  const float K1 = 0.366025404; // (sqrt(3)-1)/2
-  const float K2 = 0.211324865; // (3-sqrt(3))/6
-
-  vec2 i = floor(p + (p.x + p.y) * K1);
-  vec2 a = p - i + (i.x + i.y) * K2;
-  vec2 o = step(a.yx, a.xy);
-  vec2 b = a - o + K2;
-  vec2 c = a - 1.0 + 2.0 * K2;
-
-  vec3 h = max(0.5 - vec3(dot(a, a), dot(b, b), dot(c, c)), 0.0);
-  vec3 n = h * h * h * h * vec3(dot(a, hash2(i)), dot(b, hash2(i + o)), dot(c, hash2(i + 1.0)));
-
-  return dot(n, vec3(70.0));
+float noise(vec2 texCoord) {
+  float G = e;
+  vec2  r = (G * sin(G * texCoord));
+  return fract(r.x * r.y * (1.0 + texCoord.x));
 }
 
 vec2 rotateUvs(vec2 uv, float angle) {
@@ -70,40 +68,34 @@ vec2 rotateUvs(vec2 uv, float angle) {
 }
 
 void main() {
-  vec2 uv = rotateUvs((vUv - 0.5) * uScale, uRotation) + 0.5;
-  float t = uTime * uSpeed * 0.15;
+  float rnd        = noise(gl_FragCoord.xy);
+  vec2  uv         = rotateUvs(vUv * uScale, uRotation);
+  vec2  tex        = uv * uScale;
+  float tOffset    = uSpeed * uTime;
 
-  // Multi-layered fluid silk drape folds
-  float wave1 = sin(uv.x * 4.0 + uv.y * 3.0 + t) * 0.5 + 0.5;
-  float wave2 = cos(uv.x * 6.0 - uv.y * 4.0 - t * 0.7) * 0.5 + 0.5;
-  float wave3 = sin(uv.x * 2.5 + sin(uv.y * 5.0 + t) + t * 0.4) * 0.5 + 0.5;
-  
-  float n = snoise(uv * 2.0 + vec2(t * 0.2, -t * 0.1)) * uNoiseIntensity * 0.15;
+  tex.y += 0.03 * sin(8.0 * tex.x - tOffset);
 
-  float fold = wave1 * 0.45 + wave2 * 0.35 + wave3 * 0.2 + n;
-  fold = clamp(fold, 0.0, 1.0);
+  float pattern = 0.6 +
+                  0.4 * sin(5.0 * (tex.x + tex.y +
+                                   cos(3.0 * tex.x + 5.0 * tex.y) +
+                                   0.02 * tOffset) +
+                           sin(20.0 * (tex.x + tex.y - 0.1 * tOffset)));
 
-  // Silk specular highlight on crests
-  float sheen = pow(fold, 3.5) * 0.65;
-  float deepShadow = pow(1.0 - fold, 2.0) * 0.45;
-
-  // Multi-tone luxury silk color palette
-  vec3 shadowCol = uColor * 0.35;
-  vec3 midCol    = uColor;
-  vec3 crestCol  = mix(uColor, vec3(1.0), 0.55);
-  vec3 sheenCol  = vec3(1.0);
-
-  // Smooth silk gradient blending
-  vec3 col = mix(shadowCol, midCol, smoothstep(0.05, 0.55, fold));
-  col = mix(col, crestCol, smoothstep(0.55, 0.95, fold));
-  col += sheenCol * sheen;
-  col = max(col - vec3(deepShadow * 0.3), vec3(0.0));
-
-  // Subtle satin micro-shimmer
-  float shimmer = snoise(uv * 18.0 + t) * 0.02 * uNoiseIntensity;
-  col += vec3(shimmer);
-
-  gl_FragColor = vec4(col, 1.0);
+  float grain = rnd / 15.0 * uNoiseIntensity;
+  vec3 result = uColor * pattern - vec3(grain);
+if (uLightMode > 0.5) {
+  float fold = smoothstep(0.28, 0.9, pattern);
+  float specular = smoothstep(0.72, 0.98, pattern);
+  vec3 shadowColor = uColor * 0.72;
+  vec3 bodyColor = min(uColor * 1.18, vec3(1.0));
+  vec3 lightBase = mix(shadowColor, bodyColor, fold);
+  lightBase = mix(lightBase, vec3(1.0), specular * 0.92);
+  float fineNoise = noise(gl_FragCoord.xy * 0.63 + vec2(17.0, 41.0));
+  float grainSignal = (rnd + fineNoise - 1.0);
+  float grainStrength = clamp(uNoiseIntensity * 0.038, 0.0, 0.16);
+  result = lightBase + grainSignal * grainStrength;
+}
+  gl_FragColor = vec4(clamp(result, 0.0, 1.0), 1.0);
 }
 `;
 
@@ -122,17 +114,19 @@ const SilkPlane = forwardRef<Mesh, SilkPlaneProps>(function SilkPlane({ uniforms
   }, [ref, viewport]);
 
   useFrame((_state: RootState, delta: number) => {
-    uniforms.uTime.value += 0.1 * delta;
+    const mesh = ref as React.MutableRefObject<Mesh | null>;
+    if (mesh.current) {
+      const material = mesh.current.material as ShaderMaterial & {
+        uniforms: SilkUniforms;
+      };
+      material.uniforms.uTime.value += 0.1 * delta;
+    }
   });
 
   return (
     <mesh ref={ref}>
       <planeGeometry args={[1, 1, 1, 1]} />
-      <shaderMaterial
-        uniforms={uniforms}
-        vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
-      />
+      <shaderMaterial uniforms={uniforms} vertexShader={vertexShader} fragmentShader={fragmentShader} />
     </mesh>
   );
 });
@@ -144,39 +138,46 @@ export interface SilkProps {
   color?: string;
   noiseIntensity?: number;
   rotation?: number;
+  lightMode?: boolean;
 }
 
-const Silk: React.FC<SilkProps> = ({ speed = 10, scale = 1, color = '#7B7481', noiseIntensity = 1.5, rotation = 0 }) => {
+const Silk: React.FC<SilkProps> = ({
+  speed = 5,
+  scale = 1,
+  color = '#7B7481',
+  noiseIntensity = 1.5,
+  rotation = 0,
+  lightMode = false
+}) => {
   const meshRef = useRef<Mesh>(null);
 
-  // Stable uniforms object created once
   const uniforms = useMemo<SilkUniforms>(
     () => ({
       uSpeed: { value: speed },
       uScale: { value: scale },
       uNoiseIntensity: { value: noiseIntensity },
-      uColor: { value: new Color(color) },
+      uColor: { value: new Color(...hexToNormalizedRGB(color)) },
       uRotation: { value: rotation },
+      uLightMode: { value: lightMode ? 1 : 0 },
       uTime: { value: 0 }
     }),
-    [] // Empty dependencies to keep object stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
-  // Update uniform values when props change
   useEffect(() => {
     uniforms.uSpeed.value = speed;
     uniforms.uScale.value = scale;
     uniforms.uNoiseIntensity.value = noiseIntensity;
-    uniforms.uColor.value.set(color);
+    uniforms.uColor.value.setRGB(...hexToNormalizedRGB(color));
     uniforms.uRotation.value = rotation;
-  }, [speed, scale, noiseIntensity, color, rotation, uniforms]);
+    uniforms.uLightMode.value = lightMode ? 1 : 0;
+  }, [speed, scale, noiseIntensity, color, rotation, lightMode, uniforms]);
 
   return (
-    <div className="absolute inset-0 -z-10 h-full w-full">
-      <Canvas dpr={[1, 2]} frameloop="always" gl={{ alpha: true }}>
-        <SilkPlane ref={meshRef} uniforms={uniforms} />
-      </Canvas>
-    </div>
+    <Canvas dpr={[1, 2]} frameloop="always">
+      <SilkPlane ref={meshRef} uniforms={uniforms} />
+    </Canvas>
   );
 };
 
