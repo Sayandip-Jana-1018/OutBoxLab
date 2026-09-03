@@ -258,9 +258,9 @@ export default function ComposePage() {
         description="Build a campaign, drop in recipients, and see exactly when each email will land - including the throttling the mailbox cap will cause - before you commit."
       />
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="grid items-start gap-6 lg:grid-cols-2">
         {/* ---------------- Left: the form ---------------- */}
-        <div className="space-y-6 xl:col-span-2">
+        <div className="space-y-6">
           {/* Mailbox */}
           <section className="liquid-glass p-6">
             <div className="mb-5 flex flex-col items-center gap-3">
@@ -747,7 +747,7 @@ export default function ComposePage() {
           </motion.section>
 
           {/* Submit */}
-          <div className="sticky bottom-4 z-20 rounded-2xl">
+          <div className="liquid-glass flex flex-col items-center p-6">
             <Button
               size="lg"
               className="w-full"
