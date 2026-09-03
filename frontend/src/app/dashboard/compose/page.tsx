@@ -16,6 +16,8 @@ import {
   Eye,
   Plus,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -73,6 +75,8 @@ export default function ComposePage() {
   /** Ethereal mailboxes can be generated without limit, so the picker shows a
    * fixed number and collapses the rest behind a toggle - otherwise the list
    * grows unbounded and the page loses its symmetry. */
+  /** Which recipient the live preview is rendering. */
+  const [previewIndex, setPreviewIndex] = React.useState(0);
   const [showAllSenders, setShowAllSenders] = React.useState(false);
   const VISIBLE_SENDERS = 6;
 
@@ -189,7 +193,10 @@ export default function ComposePage() {
   }, [recipients]);
   const missingVars = usedVars.filter((v) => !availableVars.includes(v));
 
-  const previewRecipient = recipients[0];
+  // Clamp rather than reset: trimming the list should not throw the preview
+  // back to the first recipient every time.
+  const safeIndex = Math.min(previewIndex, Math.max(0, recipients.length - 1));
+  const previewRecipient = recipients[safeIndex];
   const previewVars = previewRecipient
     ? { ...previewRecipient.vars, email: previewRecipient.email }
     : { name: "Ada", email: "ada@example.com", company: "Analytical Engines" };
@@ -425,34 +432,95 @@ export default function ComposePage() {
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="liquid-glass h-full p-6"
+            className="liquid-glass flex h-full flex-col p-6"
           >
             <h2 className="mb-4 flex items-center justify-center gap-2 font-serif text-base font-bold text-zinc-900 dark:text-white">
               <Eye className="h-4 w-4" style={{ color: themeColor }} />
               Live preview
             </h2>
-            <div className="liquid-well w-full p-5 text-left">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                To
-              </p>
-              <p className="mb-3 truncate text-sm font-medium text-zinc-900 dark:text-white">
-                {previewRecipient?.email ?? "ada@example.com"}
-              </p>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                Subject
-              </p>
-              <p className="mb-3 break-words text-sm font-semibold text-zinc-900 dark:text-white">
+            {/* The envelope grows to fill the column, so this card always
+                matches the height of the Message form beside it. */}
+            <div className="liquid-well flex w-full flex-1 flex-col p-5 text-left">
+              <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                  From
+                </span>
+                <span className="truncate text-xs text-zinc-700 dark:text-zinc-300">
+                  {selectedSender
+                    ? `${selectedSender.fromName} <${selectedSender.fromEmail}>`
+                    : "Pick a mailbox"}
+                </span>
+
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                  To
+                </span>
+                <span className="truncate text-xs font-medium text-zinc-900 dark:text-white">
+                  {previewRecipient?.email ?? "ada@example.com"}
+                </span>
+              </div>
+
+              <div className="my-3 h-px bg-black/10 dark:bg-white/10" />
+
+              <p className="break-words font-serif text-base font-bold text-zinc-900 dark:text-white">
                 {renderTemplate(subject, previewVars) || (
-                  <span className="text-zinc-400">(empty)</span>
+                  <span className="text-zinc-400">(no subject)</span>
                 )}
               </p>
-              <div className="h-px bg-black/10 dark:bg-white/10" />
-              <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
-                {renderTemplate(body, previewVars)}
+
+              <pre className="mt-3 flex-1 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">
+                {renderTemplate(body, previewVars) || "(empty body)"}
               </pre>
             </div>
+
+            {/* Step through recipients so you can spot a row whose data is
+                missing, not just trust the first one. */}
+            {recipients.length > 1 && (
+              <div className="mt-4 flex items-center justify-center gap-3">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label="Previous recipient"
+                  onClick={() => setPreviewIndex((i) => Math.max(0, i - 1))}
+                  disabled={safeIndex === 0}
+                  icon={<ChevronLeft className="h-3.5 w-3.5" />}
+                />
+                <span className="font-sans text-xs font-medium text-zinc-500">
+                  Recipient {safeIndex + 1} of {formatNumber(recipients.length)}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label="Next recipient"
+                  onClick={() =>
+                    setPreviewIndex((i) => Math.min(recipients.length - 1, i + 1))
+                  }
+                  disabled={safeIndex >= recipients.length - 1}
+                  icon={<ChevronRight className="h-3.5 w-3.5" />}
+                />
+              </div>
+            )}
+
+            <div className="mt-4 grid grid-cols-3 gap-3 border-t border-black/10 pt-4 text-center dark:border-white/10">
+              {(
+                [
+                  ["Subject", `${renderTemplate(subject, previewVars).length} ch`],
+                  ["Body", `${renderTemplate(body, previewVars).length} ch`],
+                  ["Variables", String(usedVars.length)],
+                ] as const
+              ).map(([label, value]) => (
+                <div key={label}>
+                  <p className="font-serif text-base font-bold text-zinc-900 dark:text-white">
+                    {value}
+                  </p>
+                  <p className="font-sans text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+                    {label}
+                  </p>
+                </div>
+              ))}
+            </div>
+
             {!previewRecipient && (
-              <p className="mt-2 text-[11px] text-zinc-500">
+              <p className="mt-3 text-center font-sans text-[11px] text-zinc-500">
                 Showing sample data. Add recipients to preview a real one.
               </p>
             )}
