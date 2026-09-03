@@ -9,7 +9,8 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "setup": "npm run infra:up && npm run install:all && npm run db:setup",
+    "env:init": "node scripts/init-env.mjs",
+    "setup": "npm run env:init && npm run infra:up && npm run install:all && npm run db:setup",
     "install:all": "npm --prefix backend install && npm --prefix frontend install",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",

@@ -36,9 +36,8 @@ sends. PostgreSQL is the only source of truth; Redis holds nothing but derived s
 ```bash
 git clone https://github.com/Sayandip-Jana-1018/OutBoxLab.git
 cd OutBoxLab
-cp .env.example .env          # PowerShell: Copy-Item .env.example .env
-npm run setup                 # docker up + install deps + migrate + seed
-npm run dev                   # API :5000 + worker + web :3000
+npm run setup     # generate .env + docker up + install deps + migrate + seed
+npm run dev       # API :5000 + worker + web :3000
 ```
 
 Then open **http://localhost:3000** and sign in with the seeded account:
@@ -52,6 +51,11 @@ The login page has a **"Use the demo account"** button that fills this in for yo
 
 ### What `npm run setup` does
 
+0. `npm run env:init` — generates `.env` from `.env.example`, filling in a fresh
+   `JWT_SECRET` and a random Postgres password. **`.env.example` is committed and
+   therefore contains no usable secret**, only `CHANGE_ME` placeholders — an example file
+   gets copied into production verbatim, so it must never carry a working credential.
+   An existing `.env` is never overwritten.
 1. `docker compose up -d` — starts `postgres:16-alpine` and `redis:7-alpine`, both health-checked.
 2. `npm install` in `backend/` and `frontend/`.
 3. `prisma generate` + `prisma migrate deploy` — creates the schema and the full-text GIN index.
