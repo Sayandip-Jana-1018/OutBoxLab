@@ -70,6 +70,12 @@ export default function ComposePage() {
   const [delayMs, setDelayMs] = React.useState(2000);
   const [hourlyLimit, setHourlyLimit] = React.useState<number | "">("");
 
+  /** Ethereal mailboxes can be generated without limit, so the picker shows a
+   * fixed number and collapses the rest behind a toggle - otherwise the list
+   * grows unbounded and the page loses its symmetry. */
+  const [showAllSenders, setShowAllSenders] = React.useState(false);
+  const VISIBLE_SENDERS = 6;
+
   const [forecast, setForecast] = React.useState<ScheduleForecast | null>(null);
   const [forecasting, setForecasting] = React.useState(false);
 
@@ -258,9 +264,9 @@ export default function ComposePage() {
         description="Build a campaign, drop in recipients, and see exactly when each email will land - including the throttling the mailbox cap will cause - before you commit."
       />
 
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        {/* ---------------- Left: the form ---------------- */}
-        <div className="space-y-6">
+      <div className="space-y-6">
+        {/* Row 1 - the mailbox picker spans the full width, since it is
+            the choice every section below depends on. */}
           {/* Mailbox */}
           <section className="liquid-glass p-6">
             <div className="mb-5 flex flex-col items-center gap-3">
@@ -291,8 +297,8 @@ export default function ComposePage() {
                 </p>
               </div>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {senders.map((sender) => {
+              <div className="flex flex-wrap justify-center gap-3">
+                {(showAllSenders ? senders : senders.slice(0, VISIBLE_SENDERS)).map((sender) => {
                   const active = sender.id === senderId;
                   return (
                     <button
@@ -300,7 +306,7 @@ export default function ComposePage() {
                       onClick={() => setSenderId(sender.id)}
                       disabled={!sender.isActive}
                       className={cn(
-                        "rounded-2xl border p-3.5 text-left transition-all disabled:opacity-50",
+                        "w-full rounded-2xl border p-4 text-center transition-all disabled:opacity-50 sm:w-[262px]",
                         active
                           ? "shadow-md"
                           : "border-black/10 bg-black/[0.02] hover:bg-black/5 dark:border-white/10 dark:bg-white/[0.02] dark:hover:bg-white/5",
@@ -329,10 +335,26 @@ export default function ComposePage() {
                 })}
               </div>
             )}
+
+            {senders.length > VISIBLE_SENDERS && (
+              <div className="mt-4 flex justify-center">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowAllSenders((v) => !v)}
+                >
+                  {showAllSenders
+                    ? "Show fewer"
+                    : `Show all ${senders.length} mailboxes`}
+                </Button>
+              </div>
+            )}
           </section>
 
+        {/* Row 2 - what you write, beside what it will look like. */}
+        <div className="grid items-stretch gap-6 lg:grid-cols-2">
           {/* Message */}
-          <section className="liquid-glass space-y-5 p-6">
+          <section className="liquid-glass h-full space-y-5 p-6">
             <h2 className="flex items-center justify-center gap-2 font-serif text-base font-bold text-zinc-900 dark:text-white">
               <FileText className="h-4 w-4" style={{ color: themeColor }} />
               Message
@@ -399,8 +421,142 @@ export default function ComposePage() {
             )}
           </section>
 
+          {/* Live preview */}
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="liquid-glass h-full p-6"
+          >
+            <h2 className="mb-4 flex items-center justify-center gap-2 font-serif text-base font-bold text-zinc-900 dark:text-white">
+              <Eye className="h-4 w-4" style={{ color: themeColor }} />
+              Live preview
+            </h2>
+            <div className="liquid-well w-full p-5 text-left">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                To
+              </p>
+              <p className="mb-3 truncate text-sm font-medium text-zinc-900 dark:text-white">
+                {previewRecipient?.email ?? "ada@example.com"}
+              </p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                Subject
+              </p>
+              <p className="mb-3 break-words text-sm font-semibold text-zinc-900 dark:text-white">
+                {renderTemplate(subject, previewVars) || (
+                  <span className="text-zinc-400">(empty)</span>
+                )}
+              </p>
+              <div className="h-px bg-black/10 dark:bg-white/10" />
+              <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
+                {renderTemplate(body, previewVars)}
+              </pre>
+            </div>
+            {!previewRecipient && (
+              <p className="mt-2 text-[11px] text-zinc-500">
+                Showing sample data. Add recipients to preview a real one.
+              </p>
+            )}
+          </motion.section>
+        </div>
+
+        {/* Row 3 - how fast it goes out, beside who it goes to. */}
+        <div className="grid items-stretch gap-6 lg:grid-cols-2">
+          {/* Timing */}
+          <section className="liquid-glass h-full space-y-5 p-6">
+            <h2 className="flex items-center justify-center gap-2 font-serif text-base font-bold text-zinc-900 dark:text-white">
+              <Clock className="h-4 w-4" style={{ color: themeColor }} />
+              Timing &amp; throughput
+            </h2>
+
+            {/* Start time gets its own row: a datetime input is far wider than
+                a number field, and squeezing all three across made every label
+                wrap onto two lines. */}
+            <div className="liquid-well p-4">
+              <label
+                htmlFor="start-at"
+                className="block text-center font-sans text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500"
+              >
+                Start at
+              </label>
+              <Input
+                id="start-at"
+                type="datetime-local"
+                value={startAt}
+                onChange={(e) => setStartAt(e.target.value)}
+                className="mt-2 text-center"
+              />
+              <p className="mt-2 text-center font-sans text-[10px] text-zinc-400">
+                Leave blank to start immediately
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="liquid-well p-4">
+                <label
+                  htmlFor="delay"
+                  className="block text-center font-sans text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500"
+                >
+                  Gap
+                </label>
+                <div className="relative mt-2">
+                  <Input
+                    id="delay"
+                    type="number"
+                    min={0}
+                    step={500}
+                    value={delayMs}
+                    onChange={(e) => setDelayMs(Math.max(0, Number(e.target.value)))}
+                    className="pr-10 text-center font-serif text-lg font-bold"
+                  />
+                  <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 font-sans text-[10px] font-semibold text-zinc-400">
+                    ms
+                  </span>
+                </div>
+                <p className="mt-2 text-center font-sans text-[10px] text-zinc-400">
+                  Between two sends
+                </p>
+              </div>
+
+              <div className="liquid-well p-4">
+                <label
+                  htmlFor="cap"
+                  className="block text-center font-sans text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500"
+                >
+                  Cap
+                </label>
+                <Input
+                  id="cap"
+                  type="number"
+                  min={1}
+                  value={hourlyLimit}
+                  onChange={(e) =>
+                    setHourlyLimit(e.target.value === "" ? "" : Math.max(1, Number(e.target.value)))
+                  }
+                  className="mt-2 text-center font-serif text-lg font-bold"
+                />
+                <p className="mt-2 text-center font-sans text-[10px] text-zinc-400">
+                  Per mailbox, per window
+                </p>
+              </div>
+            </div>
+
+            {selectedSender && delayMs < selectedSender.minDelayMs && (
+              <p
+                className="rounded-xl border px-3 py-2.5 text-center font-sans text-[11px] leading-relaxed"
+                style={{
+                  color: "#fbbf24",
+                  borderColor: "#fbbf2444",
+                  backgroundColor: "#fbbf2414",
+                }}
+              >
+                This mailbox enforces a minimum {selectedSender.minDelayMs}ms gap, so the schedule
+                will be laid out at {selectedSender.minDelayMs}ms.
+              </p>
+            )}
+          </section>
+
           {/* Recipients */}
-          <section className="liquid-glass space-y-5 p-6">
+          <section className="liquid-glass h-full space-y-5 p-6">
             <div className="flex flex-col items-center gap-3">
               <h2 className="flex items-center justify-center gap-2 font-serif text-base font-bold text-zinc-900 dark:text-white">
                 <Users className="h-4 w-4" style={{ color: themeColor }} />
@@ -563,151 +719,16 @@ export default function ComposePage() {
               </div>
             )}
           </section>
-
         </div>
 
-        {/* ---------------- Right: preview, timing, forecast ----------------
-            Timing lives here rather than with the form fields because these
-            inputs are exactly what the projected schedule below is computed
-            from, and it keeps the two columns close in height. */}
-        <div className="space-y-6">
-          {/* Live preview */}
-          <motion.section
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="liquid-glass p-6"
-          >
-            <h2 className="mb-4 flex items-center justify-center gap-2 font-serif text-base font-bold text-zinc-900 dark:text-white">
-              <Eye className="h-4 w-4" style={{ color: themeColor }} />
-              Live preview
-            </h2>
-            <div className="liquid-well w-full p-5 text-left">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                To
-              </p>
-              <p className="mb-3 truncate text-sm font-medium text-zinc-900 dark:text-white">
-                {previewRecipient?.email ?? "ada@example.com"}
-              </p>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                Subject
-              </p>
-              <p className="mb-3 break-words text-sm font-semibold text-zinc-900 dark:text-white">
-                {renderTemplate(subject, previewVars) || (
-                  <span className="text-zinc-400">(empty)</span>
-                )}
-              </p>
-              <div className="h-px bg-black/10 dark:bg-white/10" />
-              <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
-                {renderTemplate(body, previewVars)}
-              </pre>
-            </div>
-            {!previewRecipient && (
-              <p className="mt-2 text-[11px] text-zinc-500">
-                Showing sample data. Add recipients to preview a real one.
-              </p>
-            )}
-          </motion.section>
-
-          {/* Timing */}
-          <section className="liquid-glass space-y-5 p-6">
-            <h2 className="flex items-center justify-center gap-2 font-serif text-base font-bold text-zinc-900 dark:text-white">
-              <Clock className="h-4 w-4" style={{ color: themeColor }} />
-              Timing &amp; throughput
-            </h2>
-
-            {/* Start time gets its own row: a datetime input is far wider than
-                a number field, and squeezing all three across made every label
-                wrap onto two lines. */}
-            <div className="liquid-well p-4">
-              <label
-                htmlFor="start-at"
-                className="block text-center font-sans text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500"
-              >
-                Start at
-              </label>
-              <Input
-                id="start-at"
-                type="datetime-local"
-                value={startAt}
-                onChange={(e) => setStartAt(e.target.value)}
-                className="mt-2 text-center"
-              />
-              <p className="mt-2 text-center font-sans text-[10px] text-zinc-400">
-                Leave blank to start immediately
-              </p>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="liquid-well p-4">
-                <label
-                  htmlFor="delay"
-                  className="block text-center font-sans text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500"
-                >
-                  Gap
-                </label>
-                <div className="relative mt-2">
-                  <Input
-                    id="delay"
-                    type="number"
-                    min={0}
-                    step={500}
-                    value={delayMs}
-                    onChange={(e) => setDelayMs(Math.max(0, Number(e.target.value)))}
-                    className="pr-10 text-center font-serif text-lg font-bold"
-                  />
-                  <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 font-sans text-[10px] font-semibold text-zinc-400">
-                    ms
-                  </span>
-                </div>
-                <p className="mt-2 text-center font-sans text-[10px] text-zinc-400">
-                  Between two sends
-                </p>
-              </div>
-
-              <div className="liquid-well p-4">
-                <label
-                  htmlFor="cap"
-                  className="block text-center font-sans text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500"
-                >
-                  Cap
-                </label>
-                <Input
-                  id="cap"
-                  type="number"
-                  min={1}
-                  value={hourlyLimit}
-                  onChange={(e) =>
-                    setHourlyLimit(e.target.value === "" ? "" : Math.max(1, Number(e.target.value)))
-                  }
-                  className="mt-2 text-center font-serif text-lg font-bold"
-                />
-                <p className="mt-2 text-center font-sans text-[10px] text-zinc-400">
-                  Per mailbox, per window
-                </p>
-              </div>
-            </div>
-
-            {selectedSender && delayMs < selectedSender.minDelayMs && (
-              <p
-                className="rounded-xl border px-3 py-2.5 text-center font-sans text-[11px] leading-relaxed"
-                style={{
-                  color: "#fbbf24",
-                  borderColor: "#fbbf2444",
-                  backgroundColor: "#fbbf2414",
-                }}
-              >
-                This mailbox enforces a minimum {selectedSender.minDelayMs}ms gap, so the schedule
-                will be laid out at {selectedSender.minDelayMs}ms.
-              </p>
-            )}
-          </section>
-
+        {/* Row 4 - the resulting schedule, beside the commit button. */}
+        <div className="grid items-stretch gap-6 lg:grid-cols-2">
           {/* Forecast */}
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="liquid-glass p-6"
+            className="liquid-glass h-full p-6"
           >
             <h2 className="mb-4 flex items-center justify-center gap-2 font-serif text-base font-bold text-zinc-900 dark:text-white">
               <Gauge className="h-4 w-4" style={{ color: themeColor }} />
@@ -796,7 +817,7 @@ export default function ComposePage() {
           </motion.section>
 
           {/* Submit */}
-          <div className="liquid-glass flex flex-col items-center p-6">
+          <div className="liquid-glass flex h-full flex-col items-center justify-center p-8">
             <Button
               size="lg"
               className="w-full"
@@ -822,6 +843,7 @@ export default function ComposePage() {
             )}
           </div>
         </div>
+
       </div>
     </div>
   );

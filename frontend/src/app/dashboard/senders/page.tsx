@@ -57,7 +57,7 @@ function SenderCard({
       layout
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="liquid-glass flex flex-col items-center p-6 text-center"
+      className="liquid-glass flex w-full max-w-md flex-col items-center p-6 text-center lg:w-[460px]"
     >
       <div className="flex flex-col items-center gap-4">
         <QuotaRing used={sender.quota.used} limit={sender.quota.limit} size={92} />
@@ -223,6 +223,10 @@ export default function SendersPage() {
   const [senders, setSenders] = React.useState<Sender[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [provisioning, setProvisioning] = React.useState(false);
+  /** Mailboxes are unbounded (one click each), so cap the grid and collapse
+   * the rest rather than letting it grow into a ragged wall of cards. */
+  const [showAll, setShowAll] = React.useState(false);
+  const VISIBLE = 6;
 
   const load = React.useCallback(async () => {
     try {
@@ -286,9 +290,9 @@ export default function SendersPage() {
       />
 
       {loading ? (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="flex flex-wrap justify-center gap-5">
           {Array.from({ length: 2 }).map((_, i) => (
-            <Skeleton key={i} className="h-52 w-full rounded-3xl" />
+            <Skeleton key={i} className="h-64 w-full max-w-md lg:w-[460px]" />
           ))}
         </div>
       ) : senders.length === 0 ? (
@@ -303,11 +307,21 @@ export default function SendersPage() {
           }
         />
       ) : (
-        <div className="grid gap-5 lg:grid-cols-2">
-          {senders.map((sender) => (
-            <SenderCard key={sender.id} sender={sender} onChanged={load} />
-          ))}
-        </div>
+        <>
+          <div className="flex flex-wrap justify-center gap-5">
+            {(showAll ? senders : senders.slice(0, VISIBLE)).map((sender) => (
+              <SenderCard key={sender.id} sender={sender} onChanged={load} />
+            ))}
+          </div>
+
+          {senders.length > VISIBLE && (
+            <div className="flex justify-center">
+              <Button size="sm" variant="outline" onClick={() => setShowAll((v) => !v)}>
+                {showAll ? "Show fewer" : `Show all ${senders.length} mailboxes`}
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
