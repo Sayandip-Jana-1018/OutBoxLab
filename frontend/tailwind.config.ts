@@ -1,11 +1,13 @@
 import type { Config } from "tailwindcss";
 
 export default {
-  content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+  // Scan all of src, not just app/ and components/.
+  //
+  // The status vocabulary (chip colours for SCHEDULED, DEFERRED, SENT, ...)
+  // lives in src/lib/format.ts so tables, drawers and timelines share one
+  // definition. With the narrower globs those class names were invisible to
+  // Tailwind and every chip shipped unstyled.
+  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   darkMode: "class",
   theme: {
     extend: {
