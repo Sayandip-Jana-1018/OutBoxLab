@@ -1,0 +1,55 @@
+# ---------------------------------------------------------------------------
+# OutboxLab local infrastructure
+#
+# Only two services are required: PostgreSQL (durable source of truth) and
+# Redis (BullMQ queue state, atomic rate-limit counters, pacer reservations
+# and the realtime pub/sub bus).
+#
+#   docker compose up -d      start
+#   docker compose down       stop, keep data
+#   docker compose down -v    stop, wipe data
+#
+# Both services expose healthchecks so `npm run setup` can safely run the
+# Prisma migration immediately after boot.
+# ---------------------------------------------------------------------------
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: outboxlab-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-outboxlab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-outboxlab}
+      POSTGRES_DB: ${POSTGRES_DB:-outboxlab}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-outboxlab} -d ${POSTGRES_DB:-outboxlab}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: outboxlab-redis
+    restart: unless-stopped
+    # appendonly keeps the queue durable across container restarts, which makes
+    # the "restart scenario" demo meaningful at the Redis layer too. Postgres
+    # reconciliation still covers a full Redis wipe.
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  postgres_data:
+  redis_data:
