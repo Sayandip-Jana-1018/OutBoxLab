@@ -239,11 +239,13 @@ export default function CampaignDetailPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <Link href="/dashboard/campaigns">
-          <Button variant="ghost" size="sm" icon={<ArrowLeft className="h-3.5 w-3.5" />}>
-            Campaigns
-          </Button>
-        </Link>
+        <div className="flex justify-center">
+          <Link href="/dashboard/campaigns">
+            <Button variant="ghost" size="sm" icon={<ArrowLeft className="h-3.5 w-3.5" />}>
+              Campaigns
+            </Button>
+          </Link>
+        </div>
 
         <div className="mt-4 flex flex-col items-center gap-4 text-center">
           <CampaignStatusChip status={campaign.status} />

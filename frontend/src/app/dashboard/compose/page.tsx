@@ -88,15 +88,31 @@ export default function ComposePage() {
     setDraft({ email: recipient.email, vars: { ...recipient.vars } });
   };
 
+  /**
+   * Which other row, if any, already holds the address being typed.
+   *
+   * Computed live rather than only on save: two addresses can differ by a
+   * couple of letters, and discovering the clash after pressing Save - with no
+   * indication of *which* row it collided with - is needlessly opaque.
+   */
+  const duplicateOfIndex = React.useMemo(() => {
+    const email = draft.email.trim().toLowerCase();
+    if (!email || editingIndex === null) return null;
+    const found = recipients.findIndex((r, i) => i !== editingIndex && r.email === email);
+    return found === -1 ? null : found;
+  }, [draft.email, editingIndex, recipients]);
+
   const commitEdit = () => {
     const email = draft.email.trim().toLowerCase();
     if (!EMAIL_RE.test(email)) {
       toast.error("Invalid email", email || "(blank)");
       return;
     }
-    // Editing one row must not collide with another row.
-    if (recipients.some((r, i) => i !== editingIndex && r.email === email)) {
-      toast.error("Already in the list", email);
+    if (duplicateOfIndex !== null) {
+      toast.error(
+        `Row ${duplicateOfIndex + 1} already uses this address`,
+        "Each recipient must be unique - a campaign cannot send twice to the same inbox.",
+      );
       return;
     }
     setRecipients((prev) =>
@@ -866,6 +882,13 @@ export default function ComposePage() {
                                 </div>
                               ))}
 
+                            {duplicateOfIndex !== null && (
+                              <p className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-2.5 py-2 text-center font-sans text-[11px] leading-relaxed text-rose-300">
+                                Row {duplicateOfIndex + 1} already uses this address. Each
+                                recipient must be unique.
+                              </p>
+                            )}
+
                             <div className="flex justify-end gap-2 pt-1">
                               <Button size="sm" variant="ghost" onClick={() => setEditingIndex(null)}>
                                 Cancel
@@ -873,6 +896,7 @@ export default function ComposePage() {
                               <Button
                                 size="sm"
                                 onClick={commitEdit}
+                                disabled={duplicateOfIndex !== null}
                                 icon={<Check className="h-3.5 w-3.5" />}
                               >
                                 Save
