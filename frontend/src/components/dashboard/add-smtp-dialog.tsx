@@ -183,7 +183,7 @@ export function AddSmtpDialog({
             role="dialog"
             aria-modal="true"
             aria-label="Add an SMTP mailbox"
-            className="liquid-glass liquid-glass-strong w-full max-w-lg p-7"
+            className="liquid-glass liquid-glass-strong w-full max-w-3xl p-7 sm:p-9"
           >
             <div className="mb-6 flex flex-col items-center text-center">
               <div
@@ -236,7 +236,7 @@ export function AddSmtpDialog({
               ))}
             </div>
 
-            <div className="mb-5 flex gap-2.5 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-3.5 text-left">
+            <div className="mx-auto mb-6 flex max-w-2xl gap-2.5 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4 text-left">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-400" />
               <div className="min-w-0">
                 <p className="font-sans text-[11px] leading-relaxed text-zinc-700 dark:text-zinc-300">
@@ -255,112 +255,145 @@ export function AddSmtpDialog({
               </div>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Label" htmlFor="label" error={errors.label?.message} center>
-                  <Input id="label" placeholder="My Gmail" {...register("label")} />
-                </Field>
-                <Field
-                  label="From name"
-                  htmlFor="fromName"
-                  error={errors.fromName?.message}
-                  center
-                >
-                  <Input id="fromName" placeholder="Sayandip Jana" {...register("fromName")} />
-                </Field>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
+              {/* Two semantic groups side by side: who the mail claims to be
+                  from, and how we connect to send it. Stacking all eight
+                  fields in one column made the dialog a narrow scroll. */}
+              <div className="grid gap-x-6 gap-y-4 md:grid-cols-2">
+                <div className="space-y-4">
+                  <h3 className="text-center font-sans text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+                    Identity
+                  </h3>
+
+                  <Field label="Label" htmlFor="label" error={errors.label?.message} center>
+                    <Input id="label" placeholder="My Gmail" {...register("label")} />
+                  </Field>
+
+                  <Field
+                    label="From name"
+                    htmlFor="fromName"
+                    error={errors.fromName?.message}
+                    center
+                  >
+                    <Input id="fromName" placeholder="Sayandip Jana" {...register("fromName")} />
+                  </Field>
+
+                  <Field
+                    label="From address"
+                    htmlFor="fromEmail"
+                    hint="must match the account"
+                    error={errors.fromEmail?.message}
+                    center
+                  >
+                    <Input
+                      id="fromEmail"
+                      type="email"
+                      placeholder="you@gmail.com"
+                      autoComplete="off"
+                      {...register("fromEmail")}
+                    />
+                  </Field>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-center font-sans text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+                    Connection
+                  </h3>
+
+                  <div className="grid gap-3 grid-cols-[1fr_96px]">
+                    <Field
+                      label="SMTP host"
+                      htmlFor="smtpHost"
+                      error={errors.smtpHost?.message}
+                      center
+                    >
+                      <Input id="smtpHost" placeholder="smtp.gmail.com" {...register("smtpHost")} />
+                    </Field>
+                    <Field label="Port" htmlFor="smtpPort" error={errors.smtpPort?.message} center>
+                      <Input
+                        id="smtpPort"
+                        type="number"
+                        className="text-center"
+                        {...register("smtpPort")}
+                      />
+                    </Field>
+                  </div>
+
+                  <Field
+                    label="Username"
+                    htmlFor="smtpUser"
+                    error={errors.smtpUser?.message}
+                    center
+                  >
+                    <Input
+                      id="smtpUser"
+                      placeholder="you@gmail.com"
+                      autoComplete="off"
+                      {...register("smtpUser")}
+                    />
+                  </Field>
+
+                  <Field
+                    label="Password"
+                    htmlFor="smtpPassword"
+                    hint="app password"
+                    error={errors.smtpPassword?.message}
+                    center
+                  >
+                    <Input
+                      id="smtpPassword"
+                      type="password"
+                      placeholder="16-character app password"
+                      autoComplete="new-password"
+                      {...register("smtpPassword")}
+                    />
+                  </Field>
+                </div>
               </div>
 
-              <Field
-                label="From address"
-                htmlFor="fromEmail"
-                hint="must match the account"
-                error={errors.fromEmail?.message}
-                center
-              >
-                <Input
-                  id="fromEmail"
-                  type="email"
-                  placeholder="you@gmail.com"
-                  autoComplete="off"
-                  {...register("fromEmail")}
-                />
-              </Field>
-
-              <div className="grid gap-4 sm:grid-cols-[1fr_110px]">
-                <Field label="SMTP host" htmlFor="smtpHost" error={errors.smtpHost?.message} center>
-                  <Input id="smtpHost" placeholder="smtp.gmail.com" {...register("smtpHost")} />
-                </Field>
-                <Field label="Port" htmlFor="smtpPort" error={errors.smtpPort?.message} center>
-                  <Input
-                    id="smtpPort"
-                    type="number"
-                    className="text-center"
-                    {...register("smtpPort")}
-                  />
-                </Field>
+              {/* Throughput spans the full width - it applies to the mailbox as
+                  a whole, not to either group above. */}
+              <div className="border-t border-black/10 pt-5 dark:border-white/10">
+                <h3 className="mb-4 text-center font-sans text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+                  Throughput
+                </h3>
+                <div className="mx-auto grid max-w-md gap-4 sm:grid-cols-2">
+                  <Field
+                    label="Cap per window"
+                    htmlFor="hourlyLimit"
+                    error={errors.hourlyLimit?.message}
+                    center
+                  >
+                    <Input
+                      id="hourlyLimit"
+                      type="number"
+                      className="text-center"
+                      {...register("hourlyLimit")}
+                    />
+                  </Field>
+                  <Field
+                    label="Min gap"
+                    htmlFor="minDelayMs"
+                    hint="ms"
+                    error={errors.minDelayMs?.message}
+                    center
+                  >
+                    <Input
+                      id="minDelayMs"
+                      type="number"
+                      className="text-center"
+                      {...register("minDelayMs")}
+                    />
+                  </Field>
+                </div>
               </div>
 
-              <Field label="SMTP username" htmlFor="smtpUser" error={errors.smtpUser?.message} center>
-                <Input
-                  id="smtpUser"
-                  placeholder="you@gmail.com"
-                  autoComplete="off"
-                  {...register("smtpUser")}
-                />
-              </Field>
-
-              <Field
-                label="SMTP password"
-                htmlFor="smtpPassword"
-                hint="app password"
-                error={errors.smtpPassword?.message}
-                center
-              >
-                <Input
-                  id="smtpPassword"
-                  type="password"
-                  placeholder="16-character app password"
-                  autoComplete="new-password"
-                  {...register("smtpPassword")}
-                />
-              </Field>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field
-                  label="Cap per window"
-                  htmlFor="hourlyLimit"
-                  error={errors.hourlyLimit?.message}
-                  center
-                >
-                  <Input
-                    id="hourlyLimit"
-                    type="number"
-                    className="text-center"
-                    {...register("hourlyLimit")}
-                  />
-                </Field>
-                <Field
-                  label="Min gap"
-                  htmlFor="minDelayMs"
-                  hint="ms"
-                  error={errors.minDelayMs?.message}
-                  center
-                >
-                  <Input
-                    id="minDelayMs"
-                    type="number"
-                    className="text-center"
-                    {...register("minDelayMs")}
-                  />
-                </Field>
-              </div>
-
-              <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-center font-sans text-[11px] leading-relaxed text-amber-300">
+              <p className="mx-auto max-w-xl rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-center font-sans text-[11px] leading-relaxed text-amber-300">
                 This credential is stored unencrypted in your local database. Use an app password
                 you can revoke, never your account password.
               </p>
 
-              <div className="flex justify-center gap-3 pt-1">
+              <div className="flex justify-center gap-3">
                 <Button type="button" variant="ghost" onClick={onClose}>
                   Cancel
                 </Button>
