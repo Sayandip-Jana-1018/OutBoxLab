@@ -83,18 +83,37 @@ void main() {
 
   float grain = rnd / 15.0 * uNoiseIntensity;
   vec3 result = uColor * pattern - vec3(grain);
-if (uLightMode > 0.5) {
-  float fold = smoothstep(0.28, 0.9, pattern);
-  float specular = smoothstep(0.72, 0.98, pattern);
-  vec3 shadowColor = uColor * 0.72;
-  vec3 bodyColor = min(uColor * 1.18, vec3(1.0));
-  vec3 lightBase = mix(shadowColor, bodyColor, fold);
-  lightBase = mix(lightBase, vec3(1.0), specular * 0.92);
-  float fineNoise = noise(gl_FragCoord.xy * 0.63 + vec2(17.0, 41.0));
-  float grainSignal = (rnd + fineNoise - 1.0);
-  float grainStrength = clamp(uNoiseIntensity * 0.038, 0.0, 0.16);
-  result = lightBase + grainSignal * grainStrength;
-}
+
+  // ---------------------------------------------------------------------
+  // Light mode
+  //
+  // The dark ramp multiplies the accent straight through, which on a light
+  // page produced a saturated field with highlights driven almost to pure
+  // white - hard, blown-out patches rather than fabric.
+  //
+  // Here the whole ramp lives in the pastel end instead: even the deepest
+  // fold is a light tint of the accent, the crest is close to paper, and the
+  // sheen is a gentle lift rather than a blowout. Silk in daylight is mostly
+  // light with soft shading, not colour with white holes in it.
+  // ---------------------------------------------------------------------
+  if (uLightMode > 0.5) {
+    float fold = smoothstep(0.10, 0.98, pattern);
+
+    vec3 foldTint  = mix(vec3(1.0), uColor, 0.38);   // deepest shadow, still light
+    vec3 crestTint = mix(vec3(1.0), uColor, 0.07);   // crest, close to paper
+    vec3 lightBase = mix(foldTint, crestTint, fold);
+
+    // Tight, restrained sheen. The old version mixed 92% toward pure white
+    // across a wide band, which is exactly what read as white patches.
+    float sheen = smoothstep(0.88, 1.0, pattern);
+    lightBase = mix(lightBase, vec3(1.0), sheen * 0.30);
+
+    float fineNoise = noise(gl_FragCoord.xy * 0.63 + vec2(17.0, 41.0));
+    float grainSignal = (rnd + fineNoise - 1.0);
+    float grainStrength = clamp(uNoiseIntensity * 0.022, 0.0, 0.09);
+    result = lightBase + grainSignal * grainStrength;
+  }
+
   gl_FragColor = vec4(clamp(result, 0.0, 1.0), 1.0);
 }
 `;
