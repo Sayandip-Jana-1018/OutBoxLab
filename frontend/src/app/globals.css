@@ -84,10 +84,12 @@
 
     /* --- Liquid glass tokens (light) -----------------------------------
      * Near-opaque on purpose. At 0.72 the shader bled through and every panel
-     * looked washed out with unreadable secondary text.
+     * looked washed out with unreadable secondary text. The accent arrives
+     * separately as a tint layer (see .light .liquid-glass::after) so panels
+     * carry the theme colour instead of reading as flat white.
      */
-    --glass-bg: 255 255 255 / 0.93;
-    --glass-bg-strong: 255 255 255 / 0.985;
+    --glass-bg: 255 255 255 / 0.88;
+    --glass-bg-strong: 255 255 255 / 0.96;
     --glass-border: 15 15 35 / 0.1;
     --glass-highlight: 255 255 255 / 1;
     --glass-shadow: 0 26px 65px -24px rgb(15 15 35 / 0.3);
@@ -177,8 +179,18 @@
     z-index: 1;
   }
 
+  /* Light panels get an accent tint as well as the ambient light, so the
+   * selected theme colour is present on the surface itself rather than only
+   * in icons and buttons. Without it the whole page reads as flat white. */
   .light .liquid-glass::after {
-    background: linear-gradient(180deg, rgb(255 255 255 / 0.85) 0%, transparent 45%);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.7) 0%, transparent 45%),
+      linear-gradient(
+        158deg,
+        hsl(var(--primary) / 0.13) 0%,
+        hsl(var(--primary) / 0.05) 42%,
+        hsl(var(--primary) / 0.02) 100%
+      );
   }
 
   .liquid-glass > * {
@@ -211,8 +223,8 @@
   }
 
   .light .liquid-well {
-    background: rgb(15 15 35 / 0.045);
-    border-color: rgb(15 15 35 / 0.09);
+    background: hsl(var(--primary) / 0.055);
+    border-color: hsl(var(--primary) / 0.16);
     box-shadow: inset 0 1px 2px rgb(255 255 255 / 0.7);
   }
 
@@ -221,7 +233,7 @@
   }
 
   .light .liquid-well:hover {
-    background: rgb(15 15 35 / 0.075);
+    background: hsl(var(--primary) / 0.09);
   }
 
   /* Legacy alias kept so existing template markup keeps working. */

@@ -615,42 +615,87 @@ export default function ComposePage() {
               Timing &amp; throughput
             </h2>
 
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Start at" hint="blank = now" htmlFor="start-at" center>
-                <Input
-                  id="start-at"
-                  type="datetime-local"
-                  value={startAt}
-                  onChange={(e) => setStartAt(e.target.value)}
-                />
-              </Field>
+            {/* Start time gets its own row: a datetime input is far wider than
+                a number field, and squeezing all three across made every label
+                wrap onto two lines. */}
+            <div className="liquid-well p-4">
+              <label
+                htmlFor="start-at"
+                className="block text-center font-sans text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500"
+              >
+                Start at
+              </label>
+              <Input
+                id="start-at"
+                type="datetime-local"
+                value={startAt}
+                onChange={(e) => setStartAt(e.target.value)}
+                className="mt-2 text-center"
+              />
+              <p className="mt-2 text-center font-sans text-[10px] text-zinc-400">
+                Leave blank to start immediately
+              </p>
+            </div>
 
-              <Field label="Gap between emails" hint="ms" htmlFor="delay" center>
-                <Input
-                  id="delay" className="text-center"
-                  type="number"
-                  min={0}
-                  step={500}
-                  value={delayMs}
-                  onChange={(e) => setDelayMs(Math.max(0, Number(e.target.value)))}
-                />
-              </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="liquid-well p-4">
+                <label
+                  htmlFor="delay"
+                  className="block text-center font-sans text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500"
+                >
+                  Gap
+                </label>
+                <div className="relative mt-2">
+                  <Input
+                    id="delay"
+                    type="number"
+                    min={0}
+                    step={500}
+                    value={delayMs}
+                    onChange={(e) => setDelayMs(Math.max(0, Number(e.target.value)))}
+                    className="pr-10 text-center font-serif text-lg font-bold"
+                  />
+                  <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 font-sans text-[10px] font-semibold text-zinc-400">
+                    ms
+                  </span>
+                </div>
+                <p className="mt-2 text-center font-sans text-[10px] text-zinc-400">
+                  Between two sends
+                </p>
+              </div>
 
-              <Field label="Cap per window" hint="per mailbox" htmlFor="cap" center>
+              <div className="liquid-well p-4">
+                <label
+                  htmlFor="cap"
+                  className="block text-center font-sans text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500"
+                >
+                  Cap
+                </label>
                 <Input
-                  id="cap" className="text-center"
+                  id="cap"
                   type="number"
                   min={1}
                   value={hourlyLimit}
                   onChange={(e) =>
                     setHourlyLimit(e.target.value === "" ? "" : Math.max(1, Number(e.target.value)))
                   }
+                  className="mt-2 text-center font-serif text-lg font-bold"
                 />
-              </Field>
+                <p className="mt-2 text-center font-sans text-[10px] text-zinc-400">
+                  Per mailbox, per window
+                </p>
+              </div>
             </div>
 
             {selectedSender && delayMs < selectedSender.minDelayMs && (
-              <p className="text-xs text-zinc-500">
+              <p
+                className="rounded-xl border px-3 py-2.5 text-center font-sans text-[11px] leading-relaxed"
+                style={{
+                  color: "#fbbf24",
+                  borderColor: "#fbbf2444",
+                  backgroundColor: "#fbbf2414",
+                }}
+              >
                 This mailbox enforces a minimum {selectedSender.minDelayMs}ms gap, so the schedule
                 will be laid out at {selectedSender.minDelayMs}ms.
               </p>

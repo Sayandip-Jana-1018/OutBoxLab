@@ -59,7 +59,7 @@ export function AppBackground({ intensity = "dim" }: { intensity?: "dim" | "full
   // sits in the pastel end, so a heavy white veil erases it entirely.
   const veil =
     intensity === "dim"
-      ? "absolute inset-0 bg-white/55 dark:bg-black/55"
+      ? "absolute inset-0 bg-white/45 dark:bg-black/55"
       : "absolute inset-0 bg-white/30 dark:bg-black/30";
 
   return (
