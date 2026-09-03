@@ -76,9 +76,6 @@ export default function ComposePage() {
   const [delayMs, setDelayMs] = React.useState(2000);
   const [hourlyLimit, setHourlyLimit] = React.useState<number | "">("");
 
-  /** Ethereal mailboxes can be generated without limit, so the picker shows a
-   * fixed number and collapses the rest behind a toggle - otherwise the list
-   * grows unbounded and the page loses its symmetry. */
   /** Which recipient the live preview is rendering. */
   const [previewIndex, setPreviewIndex] = React.useState(0);
 
@@ -107,6 +104,9 @@ export default function ComposePage() {
     );
     setEditingIndex(null);
   };
+  /** Ethereal mailboxes can be generated without limit, so the picker shows a
+   * fixed number and collapses the rest behind a toggle - otherwise the list
+   * grows unbounded and the page loses its symmetry. */
   const [showAllSenders, setShowAllSenders] = React.useState(false);
   const VISIBLE_SENDERS = 6;
 
@@ -569,7 +569,7 @@ export default function ComposePage() {
         {/* Row 3 - how fast it goes out, beside who it goes to. */}
         <div className="grid items-stretch gap-6 lg:grid-cols-2">
           {/* Timing */}
-          <section className="liquid-glass h-full space-y-5 p-6">
+          <section className="liquid-glass flex h-full flex-col space-y-5 p-6">
             <h2 className="flex items-center justify-center gap-2 font-serif text-base font-bold text-zinc-900 dark:text-white">
               <Clock className="h-4 w-4" style={{ color: themeColor }} />
               Timing &amp; throughput
@@ -659,6 +659,34 @@ export default function ComposePage() {
                 This mailbox enforces a minimum {selectedSender.minDelayMs}ms gap, so the schedule
                 will be laid out at {selectedSender.minDelayMs}ms.
               </p>
+            )}
+
+            {/* What these numbers actually resolve to once the mailbox's own
+                floor is applied - the effective gap is often not the one typed
+                above, and that surprise is worth removing. */}
+            {selectedSender && (
+              <div className="mt-auto grid grid-cols-2 gap-3 border-t border-black/10 pt-5 dark:border-white/10">
+                {(
+                  [
+                    ["Mailbox", selectedSender.label],
+                    ["Effective gap", `${Math.max(delayMs, selectedSender.minDelayMs)}ms`],
+                    ["Quota left", `${selectedSender.quota.remaining} of ${selectedSender.quota.limit}`],
+                    [
+                      "Queued now",
+                      `${formatNumber(recipients.length)} recipient${recipients.length === 1 ? "" : "s"}`,
+                    ],
+                  ] as const
+                ).map(([label, value]) => (
+                  <div key={label} className="liquid-well px-3 py-2.5 text-center">
+                    <p className="truncate font-serif text-sm font-bold text-zinc-900 dark:text-white">
+                      {value}
+                    </p>
+                    <p className="mt-0.5 font-sans text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-500">
+                      {label}
+                    </p>
+                  </div>
+                ))}
+              </div>
             )}
           </section>
 
@@ -998,6 +1026,66 @@ export default function ComposePage() {
 
           {/* Submit */}
           <div className="liquid-glass flex h-full flex-col items-center justify-center p-8">
+            {/* Pre-flight summary.
+                The one thing that is easy to get wrong and impossible to undo
+                is sending through a sandbox mailbox and assuming it arrived,
+                so the delivery reality of the selected mailbox is stated here
+                rather than left to be inferred from the Live preview. */}
+            <div className="mb-6 w-full space-y-2.5">
+              {(
+                [
+                  ["Mailbox", selectedSender?.label ?? "Not selected", Boolean(selectedSender)],
+                  ["Campaign", name.trim() || "Unnamed", name.trim().length >= 2],
+                  [
+                    "Recipients",
+                    `${formatNumber(recipients.length)}`,
+                    recipients.length > 0,
+                  ],
+                  ["Message", subject.trim() && body.trim() ? "Ready" : "Incomplete", Boolean(subject.trim() && body.trim())],
+                ] as const
+              ).map(([label, value, ok]) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-black/10 px-3.5 py-2.5 dark:border-white/10"
+                >
+                  <span className="font-sans text-[11px] font-bold uppercase tracking-[0.1em] text-zinc-500">
+                    {label}
+                  </span>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="truncate font-sans text-xs font-medium text-zinc-800 dark:text-zinc-100">
+                      {value}
+                    </span>
+                    <span
+                      className="h-1.5 w-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: ok ? "#34d399" : "#fb7185" }}
+                    />
+                  </span>
+                </div>
+              ))}
+
+              {selectedSender?.provider === "ETHEREAL" && (
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3.5 py-3 text-center">
+                  <p className="font-sans text-[11px] font-bold uppercase tracking-[0.12em] text-amber-400">
+                    Sandbox mailbox
+                  </p>
+                  <p className="mt-1 font-sans text-[11px] leading-relaxed text-zinc-700 dark:text-zinc-300">
+                    {selectedSender.label} is an Ethereal mailbox. It stores mail and shows a
+                    preview link, but nothing reaches a real inbox. Pick an SMTP mailbox above to
+                    deliver for real.
+                  </p>
+                </div>
+              )}
+
+              {selectedSender?.provider === "SMTP" && (
+                <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-2.5 text-center">
+                  <p className="font-sans text-[11px] leading-relaxed text-emerald-300">
+                    Delivers for real, from{" "}
+                    <strong className="font-semibold">{selectedSender.fromEmail}</strong>
+                  </p>
+                </div>
+              )}
+            </div>
+
             <Button
               size="lg"
               className="w-full"
