@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { NextConfig } from "next";
+import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 
 /**
  * The monorepo keeps a single `.env` at the repository root so the API, the
@@ -51,9 +52,28 @@ function loadRootPublicEnv(): Record<string, string> {
   return out;
 }
 
-const nextConfig: NextConfig = {
-  reactStrictMode: true,
-  env: loadRootPublicEnv(),
-};
-
-export default nextConfig;
+/**
+ * `next dev` and `next build` MUST NOT share an output directory.
+ *
+ * They write different, incompatible artifacts to the same paths. Running a
+ * production build while a dev server is up overwrites the chunks and module
+ * manifests the dev server is still serving from, and the dev server then dies
+ * with:
+ *
+ *   TypeError: __webpack_modules__[moduleId] is not a function
+ *
+ * after which every /_next/static/* request 404s - no CSS, no JS, no
+ * hydration. The page renders as unstyled HTML with framer-motion's SSR
+ * `opacity: 0` still applied, so most of it looks blank.
+ *
+ * Giving the dev server its own `.next` and sending build/start output to
+ * `.next-build` makes that collision structurally impossible, so `npm run
+ * build` is always safe to run while `npm run dev` is going.
+ */
+export default function config(phase: string): NextConfig {
+  return {
+    reactStrictMode: true,
+    distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next" : ".next-build",
+    env: loadRootPublicEnv(),
+  };
+}
