@@ -102,7 +102,7 @@ function ArchitectureDiagram() {
   ];
 
   return (
-    <div className="rounded-3xl border border-black/10 bg-white/70 p-6 backdrop-blur-2xl dark:border-white/10 dark:bg-black/40 sm:p-8">
+    <div className="liquid-glass p-6 sm:p-8">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         {nodes.map((node, index) => (
           <motion.div
@@ -111,7 +111,7 @@ function ArchitectureDiagram() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: index * 0.08 }}
-            className="relative flex flex-col items-center gap-2 rounded-2xl border border-black/10 bg-black/[0.02] p-4 text-center dark:border-white/10 dark:bg-white/[0.03]"
+            className="liquid-well relative flex flex-col items-center gap-2 p-4 text-center"
           >
             <div
               className="flex h-10 w-10 items-center justify-center rounded-xl border"
@@ -308,7 +308,7 @@ export default function Home() {
       </section>
 
       {/* ---------------- Architecture ---------------- */}
-      <section id="architecture" className="relative z-10 mx-auto w-full max-w-7xl px-6 py-16">
+      <section id="architecture" className="section-anchor relative z-10 mx-auto w-full max-w-7xl px-6 py-16">
         <div className="mx-auto mb-12 max-w-2xl text-center">
           <span className="font-sans text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
             Architecture
@@ -316,7 +316,7 @@ export default function Home() {
           <h2 className="mb-3 mt-2 text-3xl font-normal text-zinc-950 dark:text-white sm:text-5xl">
             Six moving parts, one invariant
           </h2>
-          <p className="font-sans text-sm text-zinc-600 dark:text-zinc-300">
+          <p className="font-sans text-sm text-zinc-700 dark:text-zinc-300">
             PostgreSQL is the only source of truth. Redis holds nothing but derived state - which
             is precisely why a full <code className="font-mono">docker compose down -v</code> is
             recoverable.
@@ -335,26 +335,24 @@ export default function Home() {
               viewport={{ once: true, margin: "-60px" }}
               transition={{ delay: index * 0.06 }}
             >
-              <GlassCard className="flex h-full flex-col p-6" interactive={false}>
-                <div className="mb-4 flex items-center gap-3">
-                  <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border"
-                    style={{
-                      backgroundColor: `${themeColor}18`,
-                      borderColor: `${themeColor}44`,
-                      color: themeColor,
-                    }}
-                  >
-                    <step.icon className="h-4 w-4" />
-                  </div>
-                  <span className="font-mono text-xs font-bold text-zinc-400">
-                    0{index + 1}
-                  </span>
+              <GlassCard className="flex h-full flex-col items-center p-7 text-center" interactive={false}>
+                <div
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
+                  style={{
+                    backgroundColor: `${themeColor}18`,
+                    borderColor: `${themeColor}44`,
+                    color: themeColor,
+                  }}
+                >
+                  <step.icon className="h-5 w-5" />
                 </div>
-                <h3 className="mb-2 text-base font-bold text-zinc-950 dark:text-white">
+                <span className="mt-3 font-mono text-[11px] font-bold tracking-[0.2em] text-zinc-500">
+                  0{index + 1}
+                </span>
+                <h3 className="mb-2 mt-2 text-base font-bold text-zinc-950 dark:text-white">
                   {step.title}
                 </h3>
-                <p className="font-sans text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
+                <p className="font-sans text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">
                   {step.body}
                 </p>
               </GlassCard>
@@ -364,7 +362,7 @@ export default function Home() {
       </section>
 
       {/* ---------------- Engine fixes ---------------- */}
-      <section id="engine" className="relative z-10 mx-auto w-full max-w-7xl px-6 py-16">
+      <section id="engine" className="section-anchor relative z-10 mx-auto w-full max-w-7xl px-6 py-16">
         <div className="mx-auto mb-12 max-w-2xl text-center">
           <span className="font-sans text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
             The engine
@@ -372,7 +370,7 @@ export default function Home() {
           <h2 className="mb-3 mt-2 text-3xl font-normal text-zinc-950 dark:text-white sm:text-5xl">
             Four bugs worth fixing properly
           </h2>
-          <p className="font-sans text-sm text-zinc-600 dark:text-zinc-300">
+          <p className="font-sans text-sm text-zinc-700 dark:text-zinc-300">
             Each of these is a real concurrency defect in the obvious implementation - and each one
             is verified by an assertion in <code className="font-mono">npm run test:burst</code>.
           </p>
@@ -387,35 +385,33 @@ export default function Home() {
               viewport={{ once: true, margin: "-60px" }}
               transition={{ delay: index * 0.06 }}
             >
-              <GlassCard className="flex h-full flex-col p-7" interactive={false}>
-                <div className="mb-4 flex items-center gap-3">
-                  <div
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
-                    style={{
-                      backgroundColor: `${themeColor}18`,
-                      borderColor: `${themeColor}44`,
-                      color: themeColor,
-                    }}
-                  >
-                    <item.icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="text-base font-bold text-zinc-950 dark:text-white">
-                    {item.title}
-                  </h3>
+              <GlassCard className="flex h-full flex-col items-center p-7 text-center" interactive={false}>
+                <div
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
+                  style={{
+                    backgroundColor: `${themeColor}18`,
+                    borderColor: `${themeColor}44`,
+                    color: themeColor,
+                  }}
+                >
+                  <item.icon className="h-5 w-5" />
                 </div>
+                <h3 className="mb-5 mt-3 text-base font-bold text-zinc-950 dark:text-white">
+                  {item.title}
+                </h3>
 
-                <div className="space-y-3 font-sans text-xs leading-relaxed">
-                  <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.07] p-3">
-                    <p className="mb-1 font-bold uppercase tracking-wider text-rose-400">
+                <div className="w-full space-y-3 text-center font-sans text-xs leading-relaxed">
+                  <div className="rounded-2xl border border-rose-500/30 bg-rose-500/[0.09] p-4">
+                    <p className="mb-1.5 font-bold uppercase tracking-[0.14em] text-rose-400">
                       The trap
                     </p>
-                    <p className="text-zinc-600 dark:text-zinc-300">{item.problem}</p>
+                    <p className="text-zinc-700 dark:text-zinc-300">{item.problem}</p>
                   </div>
-                  <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/[0.07] p-3">
-                    <p className="mb-1 font-bold uppercase tracking-wider text-emerald-400">
+                  <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.09] p-4">
+                    <p className="mb-1.5 font-bold uppercase tracking-[0.14em] text-emerald-400">
                       What OutboxLab does
                     </p>
-                    <p className="text-zinc-600 dark:text-zinc-300">{item.fix}</p>
+                    <p className="text-zinc-700 dark:text-zinc-300">{item.fix}</p>
                   </div>
                 </div>
               </GlassCard>
@@ -425,23 +421,23 @@ export default function Home() {
       </section>
 
       {/* ---------------- Realtime ---------------- */}
-      <section id="realtime" className="relative z-10 mx-auto w-full max-w-7xl px-6 py-16">
+      <section id="realtime" className="section-anchor relative z-10 mx-auto w-full max-w-7xl px-6 py-16">
         <div className="grid gap-6 lg:grid-cols-3">
-          <GlassCard className="p-7 lg:col-span-2" interactive={false}>
-            <div className="mb-4 flex items-center gap-3">
-              <Radio className="h-5 w-5" style={{ color: themeColor }} />
+          <GlassCard className="flex flex-col items-center p-7 text-center lg:col-span-2" interactive={false}>
+            <div className="mb-4 flex flex-col items-center gap-3">
+              <Radio className="h-6 w-6" style={{ color: themeColor }} />
               <h3 className="text-lg font-bold text-zinc-950 dark:text-white">
                 Zero polling, end to end
               </h3>
             </div>
-            <p className="mb-5 font-sans text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+            <p className="mb-5 font-sans text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
               The worker is a separate process, so it cannot write to a browser&apos;s HTTP
               response. Redis pub/sub bridges the gap: the worker publishes to a per-user channel
               and every API replica relays it downstream over Server-Sent Events. Rows in the
               dashboard change status in place as the engine works - no interval, no refetch loop,
               and no sticky sessions needed to scale the API horizontally.
             </p>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid w-full gap-3 sm:grid-cols-3">
               {[
                 ["SSE over WebSockets", "Data flows one way; cookie auth and CORS apply unchanged."],
                 ["Automatic reconnect", "EventSource repairs itself after a worker restart or sleep."],
@@ -449,9 +445,9 @@ export default function Home() {
               ].map(([title, body]) => (
                 <div
                   key={title}
-                  className="rounded-2xl border border-black/10 bg-black/[0.03] p-4 dark:border-white/10 dark:bg-white/[0.03]"
+                  className="liquid-well flex flex-col items-center p-4 text-center"
                 >
-                  <div className="mb-1.5 flex items-center gap-1.5">
+                  <div className="mb-1.5 flex flex-col items-center gap-1.5">
                     <CheckCircle2 className="h-3.5 w-3.5" style={{ color: themeColor }} />
                     <p className="font-sans text-xs font-bold text-zinc-900 dark:text-white">
                       {title}
@@ -465,11 +461,11 @@ export default function Home() {
             </div>
           </GlassCard>
 
-          <GlassCard className="flex flex-col justify-between p-7" interactive={false}>
+          <GlassCard className="flex flex-col items-center justify-between p-7 text-center" interactive={false}>
             <div>
-              <Clock className="mb-3 h-5 w-5" style={{ color: themeColor }} />
+              <Clock className="mx-auto mb-3 h-6 w-6" style={{ color: themeColor }} />
               <h3 className="mb-2 text-lg font-bold text-zinc-950 dark:text-white">Time Machine</h3>
-              <p className="font-sans text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+              <p className="font-sans text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
                 Rate limiting on an hourly window is impossible to show in a five-minute demo. One
                 API call compresses the window to 60 seconds - same Lua script, same deferral path,
                 same bucket maths. Watch a mailbox hit its cap, watch the overflow defer, watch it
@@ -478,7 +474,7 @@ export default function Home() {
             </div>
             <Link
               href={user ? "/dashboard/settings" : "/login"}
-              className="mt-6 flex items-center gap-1.5 font-sans text-sm font-bold transition-transform hover:translate-x-0.5"
+              className="mt-6 inline-flex items-center justify-center gap-1.5 font-sans text-sm font-bold transition-transform hover:translate-x-0.5"
               style={{ color: themeColor }}
             >
               Try it in Settings <ArrowRight className="h-3.5 w-3.5" />
