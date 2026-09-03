@@ -1,0 +1,229 @@
+// ---------------------------------------------------------------------------
+// OutboxLab data model
+//
+// PostgreSQL is the single source of truth for every scheduled email. Redis
+// only ever holds derived state (queue entries, rate-limit counters, pacer
+// reservations), which is what makes a full Redis wipe recoverable: the boot
+// reconciler and the drift sweeper rebuild the queue from these tables.
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String
+  name         String
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  senders   Sender[]
+  campaigns Campaign[]
+  emails    ScheduledEmail[]
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Sender mailboxes
+//
+// A "sender" is one outbound mailbox with its own SMTP credentials and its own
+// throughput budget (hourlyLimit + minDelayMs). Rate limiting is enforced per
+// sender, never globally, because that is how real providers bill/throttle.
+// ---------------------------------------------------------------------------
+
+model Sender {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  label    String // display name, e.g. "Growth mailbox"
+  fromName String
+  fromEmail String
+  provider SenderProvider @default(ETHEREAL)
+
+  smtpHost     String
+  smtpPort     Int     @default(587)
+  smtpUser     String
+  smtpPassword String
+  smtpSecure   Boolean @default(false)
+
+  // Per-sender throughput budget. Overrides the global env defaults.
+  hourlyLimit Int @default(10)
+  minDelayMs  Int @default(2000)
+
+  isActive     Boolean   @default(true)
+  lastVerified DateTime?
+  previewBase  String? // e.g. https://ethereal.email/message/
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaigns Campaign[]
+  emails    ScheduledEmail[]
+
+  @@index([userId, isActive])
+  @@map("senders")
+}
+
+enum SenderProvider {
+  ETHEREAL
+  SMTP
+}
+
+// ---------------------------------------------------------------------------
+// Campaigns
+// ---------------------------------------------------------------------------
+
+model Campaign {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  senderId String @db.Uuid
+  sender   Sender @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  name            String
+  subjectTemplate String
+  bodyTemplate    String
+
+  // Scheduling parameters captured at creation time so a campaign is fully
+  // reproducible/auditable even if the sender's defaults change later.
+  startAt              DateTime
+  delayBetweenEmailsMs Int
+  hourlyLimit          Int
+
+  status CampaignStatus @default(SCHEDULED)
+
+  totalRecipients Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  emails ScheduledEmail[]
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@map("campaigns")
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+// ---------------------------------------------------------------------------
+// Scheduled emails - the durable job ledger
+//
+// One row per recipient. `id` doubles as the BullMQ jobId, which gives us
+// idempotent re-enqueueing for free: adding the same job twice is a no-op in
+// Redis, so the reconciler and sweeper can run as often as they like.
+// ---------------------------------------------------------------------------
+
+model ScheduledEmail {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  campaignId String?   @db.Uuid
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  senderId String @db.Uuid
+  sender   Sender @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  to   String
+  vars Json @default("{}") // per-recipient template variables from the CSV
+
+  // Rendered at schedule time so the exact payload is auditable and the worker
+  // does no template work on the hot path.
+  subject String
+  body    String
+
+  sendAt      DateTime
+  status      EmailStatus @default(SCHEDULED)
+  hourlyLimit Int
+
+  attempts      Int @default(0) // genuine delivery attempts
+  deferredCount Int @default(0) // times bumped by the rate limiter or pacer
+
+  lastError  String?
+  sentAt     DateTime?
+  messageId  String?
+  previewUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events EmailEvent[]
+
+  // Idempotency guard: re-uploading the same CSV into the same campaign cannot
+  // create a duplicate send.
+  @@unique([campaignId, to], name: "campaign_recipient_unique")
+  // Drives the reconciler/sweeper scan and the dashboard tables.
+  @@index([status, sendAt])
+  @@index([senderId, status])
+  @@index([userId, status, sendAt])
+  @@index([campaignId, sendAt])
+  @@map("scheduled_emails")
+}
+
+enum EmailStatus {
+  SCHEDULED // waiting in the delayed set
+  PROCESSING // claimed by a worker right now
+  DEFERRED // bumped to a later window by the rate limiter / pacer
+  SENT
+  FAILED // exhausted retries
+  CANCELLED // cancelled by the user
+}
+
+// ---------------------------------------------------------------------------
+// Email events - append-only audit trail
+//
+// Powers the per-email timeline drawer, the campaign timeline visualiser and
+// the "why was this deferred?" explanation, and gives the realtime SSE stream
+// something durable to replay from.
+// ---------------------------------------------------------------------------
+
+model EmailEvent {
+  id      String         @id @default(uuid()) @db.Uuid
+  emailId String         @db.Uuid
+  email   ScheduledEmail @relation(fields: [emailId], references: [id], onDelete: Cascade)
+
+  type      EmailEventType
+  message   String?
+  payload   Json           @default("{}")
+  createdAt DateTime       @default(now())
+
+  @@index([emailId, createdAt])
+  @@map("email_events")
+}
+
+enum EmailEventType {
+  QUEUED
+  PICKED_UP
+  DEFERRED_RATE_LIMIT
+  DEFERRED_PACING
+  SENT
+  FAILED
+  RETRY_SCHEDULED
+  RESCHEDULED
+  CANCELLED
+  RECONCILED
+}
