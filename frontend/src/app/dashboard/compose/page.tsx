@@ -311,7 +311,7 @@ export default function ComposePage() {
                           : undefined
                       }
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-center gap-2">
                         <span className="truncate text-sm font-semibold text-zinc-900 dark:text-white">
                           {sender.label}
                         </span>
@@ -338,7 +338,7 @@ export default function ComposePage() {
               Message
             </h2>
 
-            <Field label="Campaign name" htmlFor="campaign-name">
+            <Field label="Campaign name" htmlFor="campaign-name" center>
               <Input
                 id="campaign-name"
                 value={name}
@@ -347,7 +347,7 @@ export default function ComposePage() {
               />
             </Field>
 
-            <Field label="Subject" htmlFor="subject">
+            <Field label="Subject" htmlFor="subject" center>
               <Input
                 id="subject"
                 value={subject}
@@ -356,7 +356,7 @@ export default function ComposePage() {
               />
             </Field>
 
-            <Field label="Body" htmlFor="body" hint="plain text, {{variables}} supported">
+            <Field label="Body" htmlFor="body" hint="plain text, {{variables}} supported" center>
               <Textarea
                 id="body"
                 rows={8}
@@ -572,7 +572,7 @@ export default function ComposePage() {
             </h2>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Start at" hint="blank = now" htmlFor="start-at">
+              <Field label="Start at" hint="blank = now" htmlFor="start-at" center>
                 <Input
                   id="start-at"
                   type="datetime-local"
@@ -581,9 +581,9 @@ export default function ComposePage() {
                 />
               </Field>
 
-              <Field label="Gap between emails" hint="ms" htmlFor="delay">
+              <Field label="Gap between emails" hint="ms" htmlFor="delay" center>
                 <Input
-                  id="delay"
+                  id="delay" className="text-center"
                   type="number"
                   min={0}
                   step={500}
@@ -592,9 +592,9 @@ export default function ComposePage() {
                 />
               </Field>
 
-              <Field label="Cap per window" hint="per mailbox" htmlFor="cap">
+              <Field label="Cap per window" hint="per mailbox" htmlFor="cap" center>
                 <Input
-                  id="cap"
+                  id="cap" className="text-center"
                   type="number"
                   min={1}
                   value={hourlyLimit}
@@ -626,7 +626,7 @@ export default function ComposePage() {
               <Eye className="h-4 w-4" style={{ color: themeColor }} />
               Live preview
             </h2>
-            <div className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-zinc-900">
+            <div className="liquid-well w-full p-5 text-left">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
                 To
               </p>
@@ -747,7 +747,7 @@ export default function ComposePage() {
           </motion.section>
 
           {/* Submit */}
-          <div className="sticky bottom-4">
+          <div className="sticky bottom-4 z-20 rounded-2xl">
             <Button
               size="lg"
               className="w-full"

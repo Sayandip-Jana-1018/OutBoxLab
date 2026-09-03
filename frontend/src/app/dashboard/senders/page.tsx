@@ -286,7 +286,7 @@ export default function SendersPage() {
       />
 
       {loading ? (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-5 lg:grid-cols-2">
           {Array.from({ length: 2 }).map((_, i) => (
             <Skeleton key={i} className="h-52 w-full rounded-3xl" />
           ))}
@@ -303,7 +303,7 @@ export default function SendersPage() {
           }
         />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-5 lg:grid-cols-2">
           {senders.map((sender) => (
             <SenderCard key={sender.id} sender={sender} onChanged={load} />
           ))}
