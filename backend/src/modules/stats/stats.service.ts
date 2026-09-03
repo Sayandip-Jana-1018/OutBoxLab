@@ -112,7 +112,10 @@ export async function getThroughput(userId: string, minutes: number) {
   const rows = await prisma.$queryRaw<ThroughputBucket[]>(Prisma.sql`
     WITH series AS (
       SELECT generate_series(
-        date_trunc('minute', now()) - make_interval(mins => ${minutes - 1}),
+        -- The ::int cast is required. A JS number binds as bigint, and there is
+        -- no make_interval(mins => bigint) overload, so without it Postgres
+        -- raises 42883 and the whole throughput query 500s.
+        date_trunc('minute', now()) - make_interval(mins => ${minutes - 1}::int),
         date_trunc('minute', now()),
         interval '1 minute'
       ) AS bucket

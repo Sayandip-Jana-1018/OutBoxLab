@@ -33,22 +33,30 @@ export default function OverviewPage() {
   const [throughput, setThroughput] = React.useState<ThroughputBucket[]>([]);
   const [activity, setActivity] = React.useState<ActivityEvent[]>([]);
   const [loading, setLoading] = React.useState(true);
+  /** True when the counters could not be loaded, so zeros are not mistaken for real data. */
+  const [statsFailed, setStatsFailed] = React.useState(false);
 
+  /**
+   * Each widget is settled independently.
+   *
+   * With Promise.all a single failing endpoint rejected the whole batch, so
+   * the KPIs rendered zeros while the database held thousands of rows - the
+   * page looked empty rather than broken, which is the worst of both. A
+   * throughput query that 500s should cost the sparkline, not the counters.
+   */
   const load = React.useCallback(async () => {
-    try {
-      const [overview, tp, act] = await Promise.all([
-        api.stats.overview(),
-        api.stats.throughput(30),
-        api.stats.activity(12),
-      ]);
-      setStats(overview);
-      setThroughput(tp.buckets);
-      setActivity(act.events);
-    } catch {
-      // Empty states cover this; one failed widget must not blank the page.
-    } finally {
-      setLoading(false);
-    }
+    const [overview, tp, act] = await Promise.allSettled([
+      api.stats.overview(),
+      api.stats.throughput(30),
+      api.stats.activity(12),
+    ]);
+
+    if (overview.status === "fulfilled") setStats(overview.value);
+    if (tp.status === "fulfilled") setThroughput(tp.value.buckets);
+    if (act.status === "fulfilled") setActivity(act.value.events);
+
+    setStatsFailed(overview.status === "rejected");
+    setLoading(false);
   }, []);
 
   React.useEffect(() => {
@@ -76,6 +84,15 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-10">
+      {statsFailed && (
+        <div className="mx-auto max-w-xl rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center">
+          <p className="font-sans text-xs leading-relaxed text-rose-300">
+            Could not load the live counters, so the numbers below are not current. Check that the
+            API is reachable and reload.
+          </p>
+        </div>
+      )}
+
       <PageHeader
         eyebrow="Live engine state"
         title="Overview"
