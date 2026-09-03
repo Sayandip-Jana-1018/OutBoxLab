@@ -11,6 +11,7 @@ import {
   Check,
   X,
   Pencil,
+  Server,
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -18,6 +19,7 @@ import { useThemeColor } from "@/context/theme-context";
 import { useLiveSubscription } from "@/context/live-context";
 import { QuotaRing } from "@/components/charts/quota-ring";
 import { PageHeader } from "@/components/ui/page-header";
+import { AddSmtpDialog } from "@/components/dashboard/add-smtp-dialog";
 import { Button, EmptyState, Field, Input, Skeleton } from "@/components/ui/primitives";
 import { formatDateTime, relativeTime } from "@/lib/format";
 import type { Sender } from "@/lib/types";
@@ -87,6 +89,21 @@ function SenderCard({
           <p className="mt-0.5 truncate text-xs text-zinc-500">{sender.fromEmail}</p>
           <p className="mt-0.5 truncate text-[11px] text-zinc-400">
             {sender.smtpHost}:{sender.smtpPort}
+          </p>
+
+          {/* The single most important thing to know about a mailbox: whether
+              anything it sends actually arrives. */}
+          <p
+            className="mt-2 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold"
+            style={
+              sender.provider === "ETHEREAL"
+                ? { color: "#fbbf24", borderColor: "#fbbf2444", backgroundColor: "#fbbf2414" }
+                : { color: "#34d399", borderColor: "#34d39944", backgroundColor: "#34d39914" }
+            }
+          >
+            {sender.provider === "ETHEREAL"
+              ? "Sandbox - stores mail, never delivers"
+              : "Live - delivers to real inboxes"}
           </p>
 
           {editing ? (
@@ -225,6 +242,7 @@ export default function SendersPage() {
   const [provisioning, setProvisioning] = React.useState(false);
   /** Mailboxes are unbounded (one click each), so cap the grid and collapse
    * the rest rather than letting it grow into a ragged wall of cards. */
+  const [smtpOpen, setSmtpOpen] = React.useState(false);
   const [showAll, setShowAll] = React.useState(false);
   const VISIBLE = 6;
 
@@ -279,13 +297,19 @@ export default function SendersPage() {
         title="Mailboxes"
         description="Each mailbox carries its own throughput budget. Rate limiting is enforced per mailbox, never globally - that is how real providers throttle."
         action={
-          <Button
-            loading={provisioning}
-            onClick={provision}
-            icon={<Sparkles className="h-4 w-4" />}
-          >
-            Generate Ethereal mailbox
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              loading={provisioning}
+              onClick={provision}
+              icon={<Sparkles className="h-4 w-4" />}
+            >
+              Generate Ethereal mailbox
+            </Button>
+            <Button onClick={() => setSmtpOpen(true)} icon={<Server className="h-4 w-4" />}>
+              Add SMTP mailbox
+            </Button>
+          </>
         }
       />
 
@@ -299,7 +323,7 @@ export default function SendersPage() {
         <EmptyState
           icon={<Mailbox className="h-5 w-5" />}
           title="No mailboxes yet"
-          description="Generate a sandboxed Ethereal mailbox - it takes one click and needs no SMTP credentials. Every message it sends gets a shareable preview link."
+          description="Generate a sandboxed Ethereal mailbox in one click - no credentials needed, and every message gets a shareable preview link. Add an SMTP mailbox instead if you want mail to actually reach real inboxes."
           action={
             <Button loading={provisioning} onClick={provision} size="sm">
               Generate Ethereal mailbox
@@ -323,6 +347,12 @@ export default function SendersPage() {
           )}
         </>
       )}
+
+      <AddSmtpDialog
+        open={smtpOpen}
+        onClose={() => setSmtpOpen(false)}
+        onCreated={load}
+      />
     </div>
   );
 }
