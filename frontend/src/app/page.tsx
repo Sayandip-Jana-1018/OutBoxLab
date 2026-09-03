@@ -56,6 +56,11 @@ const PIPELINE = [
     title: "Stream it back",
     body: "The worker publishes to a per-user Redis channel; the API relays it over SSE. The dashboard mutates rows in place with zero polling.",
   },
+  {
+    icon: RefreshCcw,
+    title: "Recover from anything",
+    body: "On boot the worker re-enqueues every unfinished row from Postgres, and a sweeper re-checks every 60 seconds. Job ids are the row's primary key, so replaying is idempotent - a restart, or a wiped Redis, loses nothing.",
+  },
 ];
 
 const ENGINE_FIXES = [
@@ -337,7 +342,7 @@ export default function Home() {
             >
               <GlassCard className="flex h-full flex-col items-center p-7 text-center" interactive={false}>
                 <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
+                  className="mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
                   style={{
                     backgroundColor: `${themeColor}18`,
                     borderColor: `${themeColor}44`,
@@ -387,7 +392,7 @@ export default function Home() {
             >
               <GlassCard className="flex h-full flex-col items-center p-7 text-center" interactive={false}>
                 <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
+                  className="mx-auto flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border"
                   style={{
                     backgroundColor: `${themeColor}18`,
                     borderColor: `${themeColor}44`,
