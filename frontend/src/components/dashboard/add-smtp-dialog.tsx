@@ -10,6 +10,7 @@ import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { useThemeColor } from "@/context/theme-context";
 import { Button, Field, Input } from "@/components/ui/primitives";
+import { Portal } from "@/components/ui/portal";
 import { cn } from "@/lib/utils";
 
 /**
@@ -139,6 +140,17 @@ export function AddSmtpDialog({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Stop the page scrolling behind the overlay.
+  React.useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
+
+
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
     try {
@@ -165,14 +177,15 @@ export function AddSmtpDialog({
   };
 
   return (
-    <AnimatePresence>
-      {open && (
+    <Portal>
+      <AnimatePresence>
+        {open && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-[150] flex items-start justify-center overflow-y-auto bg-black/60 p-4 py-10 backdrop-blur-sm"
+          className="fixed inset-0 z-[150] flex items-center justify-center bg-zinc-950/50 p-4 backdrop-blur-md dark:bg-black/65"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.97, y: 14 }}
@@ -183,9 +196,9 @@ export function AddSmtpDialog({
             role="dialog"
             aria-modal="true"
             aria-label="Add an SMTP mailbox"
-            className="liquid-glass liquid-glass-strong w-full max-w-3xl p-7 sm:p-9"
+            className="liquid-glass liquid-glass-strong max-h-[88vh] w-full max-w-3xl overflow-y-auto p-6 sm:p-8"
           >
-            <div className="mb-6 flex flex-col items-center text-center">
+            <div className="mb-5 flex flex-col items-center text-center">
               <div
                 className="flex h-11 w-11 items-center justify-center rounded-2xl border"
                 style={{
@@ -236,7 +249,7 @@ export function AddSmtpDialog({
               ))}
             </div>
 
-            <div className="mx-auto mb-6 flex max-w-2xl gap-2.5 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4 text-left">
+            <div className="mx-auto mb-5 flex max-w-2xl gap-2.5 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-3.5 text-left">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-400" />
               <div className="min-w-0">
                 <p className="font-sans text-[11px] leading-relaxed text-zinc-700 dark:text-zinc-300">
@@ -255,7 +268,7 @@ export function AddSmtpDialog({
               </div>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
               {/* Two semantic groups side by side: who the mail claims to be
                   from, and how we connect to send it. Stacking all eight
                   fields in one column made the dialog a narrow scroll. */}
@@ -353,8 +366,8 @@ export function AddSmtpDialog({
 
               {/* Throughput spans the full width - it applies to the mailbox as
                   a whole, not to either group above. */}
-              <div className="border-t border-black/10 pt-5 dark:border-white/10">
-                <h3 className="mb-4 text-center font-sans text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+              <div className="border-t border-black/10 pt-4 dark:border-white/10">
+                <h3 className="mb-3 text-center font-sans text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
                   Throughput
                 </h3>
                 <div className="mx-auto grid max-w-md gap-4 sm:grid-cols-2">
@@ -408,7 +421,8 @@ export function AddSmtpDialog({
             </form>
           </motion.div>
         </motion.div>
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+    </Portal>
   );
 }

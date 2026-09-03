@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/toast";
 import { useThemeColor } from "@/context/theme-context";
 import { useLiveSubscription } from "@/context/live-context";
 import { Button, Field, Input, Skeleton } from "@/components/ui/primitives";
+import { Portal } from "@/components/ui/portal";
 import { EmailStatusChip } from "@/components/ui/status-chip";
 import {
   EVENT_LABELS,
@@ -101,6 +102,17 @@ export function EmailDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [emailId, onClose]);
 
+  // Stop the page scrolling behind the overlay.
+  React.useEffect(() => {
+    if (!emailId) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [emailId]);
+
+
   const act = async (label: string, fn: () => Promise<unknown>) => {
     setBusy(true);
     try {
@@ -123,8 +135,9 @@ export function EmailDrawer({
   const canRetry = email && ["FAILED", "CANCELLED"].includes(email.status);
 
   return (
-    <AnimatePresence>
-      {emailId && (
+    <Portal>
+      <AnimatePresence>
+        {emailId && (
         <>
           <motion.div
             initial={{ opacity: 0 }}
@@ -351,7 +364,8 @@ export function EmailDrawer({
             </div>
           </motion.aside>
         </>
-      )}
-    </AnimatePresence>
+        )}
+      </AnimatePresence>
+    </Portal>
   );
 }
