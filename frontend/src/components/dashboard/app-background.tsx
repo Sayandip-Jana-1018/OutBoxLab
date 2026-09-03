@@ -3,6 +3,7 @@
 import * as React from "react";
 import Silk from "@/components/react-bits/Silk";
 import MoltenMetal from "@/components/react-bits/MoltenMetal";
+import { useTheme } from "next-themes";
 import { useThemeColor } from "@/context/theme-context";
 
 /**
@@ -18,6 +19,10 @@ import { useThemeColor } from "@/context/theme-context";
  */
 export function AppBackground({ intensity = "dim" }: { intensity?: "dim" | "full" }) {
   const { themeColor, backgroundType, silkConfig, moltenMetalConfig } = useThemeColor();
+  // Silk renders a different tonal ramp for light vs dark, so it has to follow
+  // whatever the Theme Studio has selected rather than guess.
+  const { resolvedTheme } = useTheme();
+  const isLight = resolvedTheme === "light";
   const [reducedMotion, setReducedMotion] = React.useState(false);
 
   React.useEffect(() => {
@@ -47,7 +52,7 @@ export function AppBackground({ intensity = "dim" }: { intensity?: "dim" | "full
   // contrast far more than they need spectacle.
   const veil =
     intensity === "dim"
-      ? "absolute inset-0 bg-white/90 dark:bg-black/88"
+      ? "absolute inset-0 bg-white/90 dark:bg-black/90"
       : "absolute inset-0 bg-white/45 dark:bg-black/35";
 
   return (
@@ -60,6 +65,7 @@ export function AppBackground({ intensity = "dim" }: { intensity?: "dim" | "full
             scale={silkConfig.scale}
             noiseIntensity={silkConfig.noiseIntensity}
             rotation={silkConfig.rotation}
+            lightMode={isLight}
           />
         </div>
       ) : (

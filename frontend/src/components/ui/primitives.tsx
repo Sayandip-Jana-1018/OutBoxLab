@@ -67,7 +67,7 @@ export function Button({
 // ---------------------------------------------------------------------------
 
 const inputClasses =
-  "w-full rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 shadow-[inset_0_1px_2px_rgb(255_255_255/0.6)] backdrop-blur-xl transition-all duration-300 focus:border-primary/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/15 dark:border-white/12 dark:bg-white/[0.06] dark:text-white dark:shadow-none dark:placeholder:text-zinc-500 dark:focus:bg-white/[0.1]";
+  "w-full rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 shadow-[inset_0_1px_2px_rgb(255_255_255/0.6)] backdrop-blur-xl transition-all duration-300 focus:border-primary/50 focus:bg-white focus:outline-none focus:ring-4 focus:ring-primary/15 dark:border-white/10 dark:bg-white/[0.06] dark:text-white dark:shadow-none dark:placeholder:text-zinc-500 dark:focus:bg-white/[0.1]";
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   function Input({ className, ...props }, ref) {
@@ -158,7 +158,7 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex w-full flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-black/10 px-6 py-16 text-center dark:border-white/12">
+    <div className="flex w-full flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-black/10 px-6 py-16 text-center dark:border-white/10">
       {icon && (
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-black/5 bg-black/[0.04] text-zinc-400 dark:border-white/10 dark:bg-white/[0.05]">
           {icon}

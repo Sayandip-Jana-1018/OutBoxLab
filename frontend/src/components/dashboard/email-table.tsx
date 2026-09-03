@@ -160,7 +160,7 @@ export function EmailTable({
               "rounded-full border px-4 py-1.5 text-[11px] font-bold transition-all duration-300",
               statusFilter === null
                 ? "border-transparent text-white shadow-md"
-                : "border-black/10 text-zinc-500 hover:text-zinc-900 dark:border-white/12 dark:hover:text-white",
+                : "border-black/10 text-zinc-500 hover:text-zinc-900 dark:border-white/10 dark:hover:text-white",
             )}
             style={statusFilter === null ? { backgroundColor: themeColor } : undefined}
           >
@@ -179,7 +179,7 @@ export function EmailTable({
                   "rounded-full border px-4 py-1.5 text-[11px] font-bold transition-all duration-300",
                   active
                     ? EMAIL_STATUS_STYLES[status].chip
-                    : "border-black/10 text-zinc-500 hover:text-zinc-900 dark:border-white/12 dark:hover:text-white",
+                    : "border-black/10 text-zinc-500 hover:text-zinc-900 dark:border-white/10 dark:hover:text-white",
                 )}
               >
                 {EMAIL_STATUS_STYLES[status].label}
