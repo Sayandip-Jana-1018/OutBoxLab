@@ -564,6 +564,50 @@ export default function ComposePage() {
             )}
           </section>
 
+        </div>
+
+        {/* ---------------- Right: preview, timing, forecast ----------------
+            Timing lives here rather than with the form fields because these
+            inputs are exactly what the projected schedule below is computed
+            from, and it keeps the two columns close in height. */}
+        <div className="space-y-6">
+          {/* Live preview */}
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="liquid-glass p-6"
+          >
+            <h2 className="mb-4 flex items-center justify-center gap-2 font-serif text-base font-bold text-zinc-900 dark:text-white">
+              <Eye className="h-4 w-4" style={{ color: themeColor }} />
+              Live preview
+            </h2>
+            <div className="liquid-well w-full p-5 text-left">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                To
+              </p>
+              <p className="mb-3 truncate text-sm font-medium text-zinc-900 dark:text-white">
+                {previewRecipient?.email ?? "ada@example.com"}
+              </p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                Subject
+              </p>
+              <p className="mb-3 break-words text-sm font-semibold text-zinc-900 dark:text-white">
+                {renderTemplate(subject, previewVars) || (
+                  <span className="text-zinc-400">(empty)</span>
+                )}
+              </p>
+              <div className="h-px bg-black/10 dark:bg-white/10" />
+              <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
+                {renderTemplate(body, previewVars)}
+              </pre>
+            </div>
+            {!previewRecipient && (
+              <p className="mt-2 text-[11px] text-zinc-500">
+                Showing sample data. Add recipients to preview a real one.
+              </p>
+            )}
+          </motion.section>
+
           {/* Timing */}
           <section className="liquid-glass space-y-5 p-6">
             <h2 className="flex items-center justify-center gap-2 font-serif text-base font-bold text-zinc-900 dark:text-white">
@@ -612,46 +656,6 @@ export default function ComposePage() {
               </p>
             )}
           </section>
-        </div>
-
-        {/* ---------------- Right: preview + forecast ---------------- */}
-        <div className="space-y-6">
-          {/* Live preview */}
-          <motion.section
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="liquid-glass p-6"
-          >
-            <h2 className="mb-4 flex items-center justify-center gap-2 font-serif text-base font-bold text-zinc-900 dark:text-white">
-              <Eye className="h-4 w-4" style={{ color: themeColor }} />
-              Live preview
-            </h2>
-            <div className="liquid-well w-full p-5 text-left">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                To
-              </p>
-              <p className="mb-3 truncate text-sm font-medium text-zinc-900 dark:text-white">
-                {previewRecipient?.email ?? "ada@example.com"}
-              </p>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                Subject
-              </p>
-              <p className="mb-3 break-words text-sm font-semibold text-zinc-900 dark:text-white">
-                {renderTemplate(subject, previewVars) || (
-                  <span className="text-zinc-400">(empty)</span>
-                )}
-              </p>
-              <div className="h-px bg-black/10 dark:bg-white/10" />
-              <pre className="mt-3 max-h-56 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
-                {renderTemplate(body, previewVars)}
-              </pre>
-            </div>
-            {!previewRecipient && (
-              <p className="mt-2 text-[11px] text-zinc-500">
-                Showing sample data. Add recipients to preview a real one.
-              </p>
-            )}
-          </motion.section>
 
           {/* Forecast */}
           <motion.section
