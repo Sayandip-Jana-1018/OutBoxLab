@@ -18,6 +18,8 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Pencil,
+  Check,
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -40,6 +42,8 @@ interface Recipient {
   email: string;
   vars: Record<string, string>;
 }
+
+const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[a-z]{2,}$/i;
 
 const SAMPLE_CSV = `email,name,company
 ada@example.com,Ada,Analytical Engines
@@ -77,6 +81,32 @@ export default function ComposePage() {
    * grows unbounded and the page loses its symmetry. */
   /** Which recipient the live preview is rendering. */
   const [previewIndex, setPreviewIndex] = React.useState(0);
+
+  /** Index of the recipient being edited inline, and its working copy. */
+  const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
+  const [draft, setDraft] = React.useState<Recipient>({ email: "", vars: {} });
+
+  const startEdit = (index: number, recipient: Recipient) => {
+    setEditingIndex(index);
+    setDraft({ email: recipient.email, vars: { ...recipient.vars } });
+  };
+
+  const commitEdit = () => {
+    const email = draft.email.trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) {
+      toast.error("Invalid email", email || "(blank)");
+      return;
+    }
+    // Editing one row must not collide with another row.
+    if (recipients.some((r, i) => i !== editingIndex && r.email === email)) {
+      toast.error("Already in the list", email);
+      return;
+    }
+    setRecipients((prev) =>
+      prev.map((r, i) => (i === editingIndex ? { email, vars: draft.vars } : r)),
+    );
+    setEditingIndex(null);
+  };
   const [showAllSenders, setShowAllSenders] = React.useState(false);
   const VISIBLE_SENDERS = 6;
 
@@ -178,7 +208,7 @@ export default function ComposePage() {
   const addManual = () => {
     const email = manualEmail.trim().toLowerCase();
     if (!email) return;
-    if (!/^[^\s@,;]+@[^\s@,;]+\.[a-z]{2,}$/i.test(email)) {
+    if (!EMAIL_RE.test(email)) {
       toast.error("Invalid email", email);
       return;
     }
@@ -633,7 +663,7 @@ export default function ComposePage() {
           </section>
 
           {/* Recipients */}
-          <section className="liquid-glass h-full space-y-5 p-6">
+          <section className="liquid-glass flex h-full flex-col space-y-5 p-6">
             <div className="flex flex-col items-center gap-3">
               <h2 className="flex items-center justify-center gap-2 font-serif text-base font-bold text-zinc-900 dark:text-white">
                 <Users className="h-4 w-4" style={{ color: themeColor }} />
@@ -756,45 +786,118 @@ export default function ComposePage() {
               </Button>
             </div>
 
-            {/* Recipient preview list */}
-            {recipients.length > 0 && (
-              <div className="max-h-44 w-full overflow-y-auto rounded-2xl border border-black/10 dark:border-white/10">
-                <table className="w-full text-left text-xs">
-                  <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                    {recipients.slice(0, 50).map((r, i) => (
-                      <tr key={r.email}>
-                        <td className="px-3 py-2 font-mono text-zinc-400">{i + 1}</td>
-                        <td className="px-3 py-2 font-medium text-zinc-800 dark:text-zinc-100">
-                          {r.email}
-                        </td>
-                        <td className="px-3 py-2 text-zinc-500">
-                          {Object.entries(r.vars)
-                            .filter(([, v]) => v)
-                            .map(([k, v]) => `${k}=${v}`)
-                            .join(", ")}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <button
-                            onClick={() =>
-                              setRecipients((prev) => prev.filter((x) => x.email !== r.email))
-                            }
-                            className="rounded p-1 text-zinc-400 hover:text-rose-500"
-                            aria-label={`Remove ${r.email}`}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {recipients.length > 50 && (
-                  <p className="border-t border-black/5 px-3 py-2 text-center text-[11px] text-zinc-500 dark:border-white/5">
-                    + {formatNumber(recipients.length - 50)} more
+            {/* Recipient list.
+                flex-1 + min-h-0 lets it absorb leftover height when the card is
+                short and scroll internally when the list is long, so this
+                column neither leaves a gap nor outgrows the one beside it.
+                Rows are editable in place - re-exporting a CSV to correct one
+                address is not a reasonable ask. */}
+            <div className="flex min-h-0 w-full flex-1 flex-col">
+              {recipients.length === 0 ? (
+                <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-black/10 px-4 py-8 text-center dark:border-white/10">
+                  <p className="max-w-xs font-sans text-xs leading-relaxed text-zinc-500">
+                    No recipients yet. Drop a CSV, load the sample, or add an address above -
+                    then click any row to edit its name and other variables.
                   </p>
-                )}
-              </div>
-            )}
+                </div>
+              ) : (
+                <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto rounded-2xl border border-black/10 dark:border-white/10">
+                  <ul className="divide-y divide-black/5 dark:divide-white/5">
+                    {recipients.map((r, i) => (
+                      <li key={i} className="px-3 py-2.5">
+                        {editingIndex === i ? (
+                          <div className="space-y-2">
+                            <Input
+                              value={draft.email}
+                              onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
+                              placeholder="name@example.com"
+                              className="py-2 text-xs"
+                              aria-label="Recipient email"
+                              autoFocus
+                            />
+
+                            {availableVars
+                              .filter((v) => v !== "email")
+                              .map((v) => (
+                                <div key={v} className="flex items-center gap-2">
+                                  <span className="w-20 shrink-0 truncate font-mono text-[10px] text-zinc-400">
+                                    {"{{" + v + "}}"}
+                                  </span>
+                                  <Input
+                                    value={String(draft.vars[v] ?? "")}
+                                    onChange={(e) =>
+                                      setDraft((d) => ({
+                                        ...d,
+                                        vars: { ...d.vars, [v]: e.target.value },
+                                      }))
+                                    }
+                                    placeholder={v}
+                                    className="py-1.5 text-xs"
+                                    aria-label={v}
+                                  />
+                                </div>
+                              ))}
+
+                            <div className="flex justify-end gap-2 pt-1">
+                              <Button size="sm" variant="ghost" onClick={() => setEditingIndex(null)}>
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={commitEdit}
+                                icon={<Check className="h-3.5 w-3.5" />}
+                              >
+                                Save
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-start gap-2">
+                            <span className="w-5 shrink-0 pt-0.5 font-mono text-[11px] text-zinc-400">
+                              {i + 1}
+                            </span>
+                            <button
+                              onClick={() => startEdit(i, r)}
+                              className="min-w-0 flex-1 text-left"
+                              aria-label={"Edit " + r.email}
+                            >
+                              <span className="block truncate text-xs font-medium text-zinc-800 dark:text-zinc-100">
+                                {r.email}
+                              </span>
+                              {Object.entries(r.vars).some(([, v]) => v) && (
+                                <span className="mt-0.5 line-clamp-2 block text-[11px] text-zinc-500">
+                                  {Object.entries(r.vars)
+                                    .filter(([, v]) => v)
+                                    .map(([k, v]) => k + "=" + v)
+                                    .join(", ")}
+                                </span>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => startEdit(i, r)}
+                              className="shrink-0 rounded p-1 text-zinc-400 transition-colors hover:text-zinc-900 dark:hover:text-white"
+                              aria-label={"Edit " + r.email}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setRecipients((prev) => prev.filter((_, x) => x !== i));
+                                setEditingIndex(null);
+                              }}
+                              className="shrink-0 rounded p-1 text-zinc-400 transition-colors hover:text-rose-500"
+                              aria-label={"Remove " + r.email}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </section>
         </div>
 
