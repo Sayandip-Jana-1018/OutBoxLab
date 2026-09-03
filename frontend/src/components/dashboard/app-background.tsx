@@ -42,10 +42,13 @@ export function AppBackground({ intensity = "dim" }: { intensity?: "dim" | "full
     );
   }
 
+  // The dashboard veil is heavy on purpose. At 78% the shader still bled
+  // through the panels and washed out secondary text; dense tables need
+  // contrast far more than they need spectacle.
   const veil =
     intensity === "dim"
-      ? "absolute inset-0 bg-white/78 dark:bg-black/78"
-      : "absolute inset-0 bg-white/35 dark:bg-black/25";
+      ? "absolute inset-0 bg-white/90 dark:bg-black/88"
+      : "absolute inset-0 bg-white/45 dark:bg-black/35";
 
   return (
     <div className="pointer-events-none fixed inset-0 z-0 h-full w-full" aria-hidden>
