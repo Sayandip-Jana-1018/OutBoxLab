@@ -17,7 +17,6 @@ import { api, ApiError, API_BASE } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { useThemeColor } from "@/context/theme-context";
 import { useAuth } from "@/context/auth-context";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button, Skeleton } from "@/components/ui/primitives";
 import { formatDuration, formatNumber } from "@/lib/format";
@@ -77,9 +76,6 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-10">
-      {/* The floating theme/shader studio button, available on this page. */}
-      <ThemeToggle />
-
       <PageHeader
         eyebrow="Configuration"
         title="Settings"

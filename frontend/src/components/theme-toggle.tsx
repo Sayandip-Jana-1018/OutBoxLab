@@ -77,7 +77,9 @@ export function ThemeToggle() {
   return (
     <>
       {/* Floating Trigger Button on Top Right */}
-      <div className="fixed top-6 right-6 z-40">
+      {/* Above the portalled overlays (z-150) so the palette stays reachable
+          while a dialog or drawer is open. */}
+      <div className="fixed top-6 right-6 z-[200]">
         <button
           onClick={() => setIsOpen(true)}
           className="relative group w-11 h-11 rounded-2xl bg-white/80 dark:bg-black/60 backdrop-blur-2xl border border-black/10 dark:border-white/20 flex items-center justify-center text-zinc-900 dark:text-white hover:scale-105 transition-all shadow-xl hover:shadow-[0_0_25px_rgba(255,255,255,0.2)]"
@@ -104,7 +106,7 @@ export function ThemeToggle() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60 dark:bg-black/75 backdrop-blur-md"
+            className="fixed inset-0 z-[210] flex items-center justify-center p-4 sm:p-6 bg-black/60 dark:bg-black/75 backdrop-blur-md"
             onClick={() => setIsOpen(false)}
           >
             <motion.div
