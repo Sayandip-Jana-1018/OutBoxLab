@@ -96,9 +96,14 @@ systemRouter.get(
   }),
 );
 
-/** Current scheduling clock configuration. */
+/**
+ * Current scheduling clock configuration.
+ *
+ * Namespaced under /system, unlike /health and /metrics which stay at the root
+ * because probes and Prometheus scrapers conventionally expect them there.
+ */
 systemRouter.get(
-  '/clock',
+  '/system/clock',
   asyncHandler(async (_req, res) => {
     const windowMs = await getRateWindowMs();
     res.json({
@@ -130,7 +135,7 @@ systemRouter.get(
  * deployment.
  */
 systemRouter.post(
-  '/time-machine',
+  '/system/time-machine',
   requireAuth,
   validate({
     body: z.object({
