@@ -235,6 +235,6 @@ npm run test:burst
 | --- | --- |
 | Nothing sends | The worker terminal is not running. The API alone does not process jobs. |
 | Everything deferred | Time Machine still compressed, or the mailbox is at its cap. |
-| Live pill says Offline | API is down, or the origin is missing from `FRONTEND_URL`. |
+| Live pill says Offline | API is down, or asleep - give a free instance up to a minute to wake. |
 | Gmail send fails | Re-run **Verify SMTP**. App passwords can be revoked. |
 | Preview link missing | Expected for SMTP mailboxes. Ethereal only. Show the Gmail Sent folder instead. |

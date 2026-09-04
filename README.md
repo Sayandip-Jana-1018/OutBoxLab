@@ -604,7 +604,7 @@ stack boots with zero edits.**
 | `PORT` | `5000` | API port |
 | `APP_URL` | `http://localhost:5000` | Public API URL |
 | `FRONTEND_URL` | `http://localhost:3000` | CORS allowlist (comma-separated) |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:5000` | API base the browser calls |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:5000` | API the frontend proxies `/api/*` to (the browser calls its own origin) |
 | `DATABASE_URL` | `postgresql://outboxlab:outboxlab@localhost:5432/outboxlab` | Postgres DSN |
 | `REDIS_URL` | `redis://localhost:6379` | Redis DSN |
 | `POSTGRES_PORT` / `REDIS_PORT` | `5432` / `6379` | Host ports docker-compose publishes |

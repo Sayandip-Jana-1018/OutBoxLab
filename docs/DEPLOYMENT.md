@@ -105,14 +105,37 @@ On a paid plan, split them: change the web service's command to
 
 ---
 
-## 4. Cross-origin cookies
+## 4. The session cookie
 
-The frontend and API are on different domains, so the session cookie needs
-`SameSite=None; Secure`. `COOKIE_SECURE=true` in the blueprint does this. With
-it left at `false` the browser silently drops the cookie and every request 401s
-after a seemingly successful login.
+The frontend and the API sit on unrelated domains — `*.vercel.app` and
+`*.onrender.com`. A cookie the API sets is therefore a **third-party cookie**,
+and Chrome blocks those by default. Safari has for years; Firefox blocks them
+under Enhanced Tracking Protection.
 
-Both sides must be HTTPS. Vercel and Render both are by default.
+That failure is worth recognising, because it looks like everything else:
+
+- login returns 200 and shows a success toast,
+- the next request is anonymous, so the app bounces back to the sign-in page,
+- the dashboard counters error out and the live pill sits on *Reconnecting*.
+
+No server-side setting fixes it. `SameSite=None; Secure` and
+`Access-Control-Allow-Credentials: true` are both already correct — the browser
+simply is not asking the server's opinion.
+
+The fix is to stop making the cookie third-party. `frontend/next.config.ts`
+rewrites `/api/*` to the backend, so the browser only ever talks to the Vercel
+origin and the cookie comes back first-party. CORS stops applying at all.
+
+Two consequences worth knowing:
+
+- `NEXT_PUBLIC_API_URL` on Vercel is the **proxy target**, not a URL the browser
+  uses. It still must be the API's public URL.
+- `FRONTEND_URL` on Render no longer gates normal traffic, since proxied
+  requests are server-to-server. Keep it set correctly anyway — it still governs
+  anything that reaches the API directly from a browser.
+
+`COOKIE_SECURE=true` remains required: the cookie is `Secure`, and both sides
+are HTTPS on Vercel and Render by default.
 
 ---
 
