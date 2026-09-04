@@ -20,7 +20,13 @@ import { useLiveSubscription } from "@/context/live-context";
 import { QuotaRing } from "@/components/charts/quota-ring";
 import { PageHeader } from "@/components/ui/page-header";
 import { AddSmtpDialog } from "@/components/dashboard/add-smtp-dialog";
-import { Button, EmptyState, Field, Input, Skeleton } from "@/components/ui/primitives";
+import {
+  Button,
+  EmptyState,
+  Field,
+  Input,
+  Skeleton,
+} from "@/components/ui/primitives";
 import { formatDateTime, relativeTime } from "@/lib/format";
 import type { Sender } from "@/lib/types";
 
@@ -38,15 +44,24 @@ function SenderCard({
   const [limit, setLimit] = React.useState(sender.hourlyLimit);
   const [gap, setGap] = React.useState(sender.minDelayMs);
 
-  const act = async (label: string, fn: () => Promise<unknown>) => {
+  /**
+   * `done` is past tense ("Verified"), `failed` is the whole failure title.
+   * Deriving one from the other produced "Could not verified", which is the
+   * kind of thing a reader notices immediately and trusts a little less.
+   */
+  const act = async (
+    done: string,
+    failed: string,
+    fn: () => Promise<unknown>,
+  ) => {
     setBusy(true);
     try {
       await fn();
-      toast.success(label);
+      toast.success(done);
       onChanged();
     } catch (err) {
       toast.error(
-        `Could not ${label.toLowerCase()}`,
+        failed,
         err instanceof ApiError ? err.message : "Unexpected error",
       );
     } finally {
@@ -62,7 +77,11 @@ function SenderCard({
       className="liquid-glass flex w-full max-w-md flex-col items-center p-6 text-center lg:w-[460px]"
     >
       <div className="flex flex-col items-center gap-4">
-        <QuotaRing used={sender.quota.used} limit={sender.quota.limit} size={92} />
+        <QuotaRing
+          used={sender.quota.used}
+          limit={sender.quota.limit}
+          size={92}
+        />
 
         <div className="min-w-0 w-full">
           <div className="flex flex-wrap items-center justify-center gap-2">
@@ -73,8 +92,14 @@ function SenderCard({
               className="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
               style={{
                 color: sender.provider === "ETHEREAL" ? themeColor : "#a1a1aa",
-                borderColor: sender.provider === "ETHEREAL" ? `${themeColor}55` : "#a1a1aa55",
-                backgroundColor: sender.provider === "ETHEREAL" ? `${themeColor}15` : "#a1a1aa15",
+                borderColor:
+                  sender.provider === "ETHEREAL"
+                    ? `${themeColor}55`
+                    : "#a1a1aa55",
+                backgroundColor:
+                  sender.provider === "ETHEREAL"
+                    ? `${themeColor}15`
+                    : "#a1a1aa15",
               }}
             >
               {sender.provider}
@@ -86,7 +111,9 @@ function SenderCard({
             )}
           </div>
 
-          <p className="mt-0.5 truncate text-xs text-zinc-500">{sender.fromEmail}</p>
+          <p className="mt-0.5 truncate text-xs text-zinc-500">
+            {sender.fromEmail}
+          </p>
           <p className="mt-0.5 truncate text-[11px] text-zinc-400">
             {sender.smtpHost}:{sender.smtpPort}
           </p>
@@ -97,8 +124,16 @@ function SenderCard({
             className="mt-2 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold"
             style={
               sender.provider === "ETHEREAL"
-                ? { color: "#fbbf24", borderColor: "#fbbf2444", backgroundColor: "#fbbf2414" }
-                : { color: "#34d399", borderColor: "#34d39944", backgroundColor: "#34d39914" }
+                ? {
+                    color: "#fbbf24",
+                    borderColor: "#fbbf2444",
+                    backgroundColor: "#fbbf2414",
+                  }
+                : {
+                    color: "#34d399",
+                    borderColor: "#34d39944",
+                    backgroundColor: "#34d39914",
+                  }
             }
           >
             {sender.provider === "ETHEREAL"
@@ -113,7 +148,9 @@ function SenderCard({
                   type="number"
                   min={1}
                   value={limit}
-                  onChange={(e) => setLimit(Math.max(1, Number(e.target.value)))}
+                  onChange={(e) =>
+                    setLimit(Math.max(1, Number(e.target.value)))
+                  }
                   className="py-2 text-center"
                 />
               </Field>
@@ -132,8 +169,14 @@ function SenderCard({
                 loading={busy}
                 icon={<Check className="h-3.5 w-3.5" />}
                 onClick={async () => {
-                  await act("Mailbox updated", () =>
-                    api.senders.update(sender.id, { hourlyLimit: limit, minDelayMs: gap }),
+                  await act(
+                    "Mailbox updated",
+                    "Could not update the mailbox",
+                    () =>
+                      api.senders.update(sender.id, {
+                        hourlyLimit: limit,
+                        minDelayMs: gap,
+                      }),
                   );
                   setEditing(false);
                 }}
@@ -159,7 +202,11 @@ function SenderCard({
                 [
                   ["Cap", `${sender.hourlyLimit}`, "per window"],
                   ["Min gap", `${sender.minDelayMs}ms`, "between sends"],
-                  ["Resets", relativeTime(sender.quota.resetsAt), "next window"],
+                  [
+                    "Resets",
+                    relativeTime(sender.quota.resetsAt),
+                    "next window",
+                  ],
                 ] as const
               ).map(([label, value, hint]) => (
                 <div key={label} className="liquid-well px-2 py-3">
@@ -198,9 +245,14 @@ function SenderCard({
             loading={busy}
             icon={<ShieldCheck className="h-3.5 w-3.5" />}
             onClick={() =>
-              act("Verified", async () => {
+              act("Verified", "Verification failed", async () => {
                 const { verified } = await api.senders.verify(sender.id);
-                if (!verified) throw new ApiError(400, "SMTP", "SMTP credentials did not authenticate");
+                if (!verified)
+                  throw new ApiError(
+                    400,
+                    "SMTP",
+                    "SMTP credentials did not authenticate",
+                  );
               })
             }
           >
@@ -212,8 +264,13 @@ function SenderCard({
             loading={busy}
             icon={<Power className="h-3.5 w-3.5" />}
             onClick={() =>
-              act(sender.isActive ? "Deactivated" : "Activated", () =>
-                api.senders.update(sender.id, { isActive: !sender.isActive }),
+              act(
+                sender.isActive ? "Deactivated" : "Activated",
+                sender.isActive
+                  ? "Could not deactivate the mailbox"
+                  : "Could not activate the mailbox",
+                () =>
+                  api.senders.update(sender.id, { isActive: !sender.isActive }),
               )
             }
           >
@@ -225,7 +282,11 @@ function SenderCard({
             loading={busy}
             className="text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
             icon={<Trash2 className="h-3.5 w-3.5" />}
-            onClick={() => act("Deleted", () => api.senders.remove(sender.id))}
+            onClick={() =>
+              act("Deleted", "Could not delete the mailbox", () =>
+                api.senders.remove(sender.id),
+              )
+            }
           >
             Delete
           </Button>
@@ -306,7 +367,10 @@ export default function SendersPage() {
             >
               Generate Ethereal mailbox
             </Button>
-            <Button onClick={() => setSmtpOpen(true)} icon={<Server className="h-4 w-4" />}>
+            <Button
+              onClick={() => setSmtpOpen(true)}
+              icon={<Server className="h-4 w-4" />}
+            >
               Add SMTP mailbox
             </Button>
           </>
@@ -340,8 +404,14 @@ export default function SendersPage() {
 
           {senders.length > VISIBLE && (
             <div className="flex justify-center">
-              <Button size="sm" variant="outline" onClick={() => setShowAll((v) => !v)}>
-                {showAll ? "Show fewer" : `Show all ${senders.length} mailboxes`}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowAll((v) => !v)}
+              >
+                {showAll
+                  ? "Show fewer"
+                  : `Show all ${senders.length} mailboxes`}
               </Button>
             </div>
           )}
