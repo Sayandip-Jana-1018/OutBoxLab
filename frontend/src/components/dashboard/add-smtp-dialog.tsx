@@ -172,7 +172,21 @@ export function AddSmtpDialog({
       // Port 465 is implicit TLS; 587 is STARTTLS, which nodemailer expects
       // with secure=false.
       const smtpSecure = Number(values.smtpPort) === 465;
-      await api.senders.create({ ...values, smtpSecure });
+
+      /**
+       * Google presents an App Password as four space-separated groups
+       * ("abcd efgh ijkl mnop") and most people paste exactly that, but the
+       * secret is the sixteen characters without the spaces. Sent verbatim it
+       * fails authentication, and the resulting SMTP error says nothing about
+       * whitespace - so the shape is matched precisely and only then collapsed.
+       * A password that merely contains spaces is left alone, since a custom
+       * provider may legitimately use them.
+       */
+      const smtpPassword = /^(\S{4}\s+){3}\S{4}$/.test(values.smtpPassword)
+        ? values.smtpPassword.replace(/\s+/g, "")
+        : values.smtpPassword;
+
+      await api.senders.create({ ...values, smtpPassword, smtpSecure });
 
       toast.success(
         "Mailbox added",
