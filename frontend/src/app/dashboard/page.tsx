@@ -15,7 +15,7 @@ import {
   ArrowRight,
   Gauge,
 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useLiveSubscription } from "@/context/live-context";
 import { useThemeColor } from "@/context/theme-context";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -33,8 +33,13 @@ export default function OverviewPage() {
   const [throughput, setThroughput] = React.useState<ThroughputBucket[]>([]);
   const [activity, setActivity] = React.useState<ActivityEvent[]>([]);
   const [loading, setLoading] = React.useState(true);
-  /** True when the counters could not be loaded, so zeros are not mistaken for real data. */
-  const [statsFailed, setStatsFailed] = React.useState(false);
+  /**
+   * Why the counters are missing, so zeros are never mistaken for real data.
+   *
+   * "auth" and "network" are kept apart because they need opposite handling: a
+   * dropped connection is worth retrying, an expired session never is.
+   */
+  const [failure, setFailure] = React.useState<null | "auth" | "network">(null);
 
   /**
    * Each widget is settled independently.
@@ -55,10 +60,16 @@ export default function OverviewPage() {
     if (tp.status === "fulfilled") setThroughput(tp.value.buckets);
     if (act.status === "fulfilled") setActivity(act.value.events);
 
-    setStatsFailed(overview.status === "rejected");
     setLoading(false);
 
-    return overview.status === "fulfilled";
+    if (overview.status === "fulfilled") {
+      setFailure(null);
+      return true;
+    }
+
+    const reason = overview.reason;
+    setFailure(reason instanceof ApiError && reason.status === 401 ? "auth" : "network");
+    return false;
   }, []);
 
   /**
@@ -72,7 +83,7 @@ export default function OverviewPage() {
    * thing that needs a human.
    */
   React.useEffect(() => {
-    if (!statsFailed) return;
+    if (failure !== "network") return;
 
     let cancelled = false;
     let attempt = 0;
@@ -92,7 +103,7 @@ export default function OverviewPage() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [statsFailed, load]);
+  }, [failure, load]);
 
   React.useEffect(() => {
     void load();
@@ -127,11 +138,23 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-10">
-      {statsFailed && (
+      {failure && (
         <div className="mx-auto max-w-xl rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center">
           <p className="font-sans text-xs leading-relaxed text-rose-300">
-            Could not reach the API, so the numbers below are not current. Retrying automatically -
-            a free-tier instance can take up to a minute to wake.
+            {failure === "auth" ? (
+              <>
+                Your session has expired, so the numbers below are not current.{" "}
+                <Link href="/login" className="font-bold underline underline-offset-2">
+                  Sign in again
+                </Link>
+                .
+              </>
+            ) : (
+              <>
+                Could not reach the API, so the numbers below are not current. Retrying
+                automatically - a sleeping instance can take up to a minute to wake.
+              </>
+            )}
           </p>
         </div>
       )}
