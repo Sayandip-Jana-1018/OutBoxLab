@@ -34,33 +34,43 @@ const csvList = z
 /**
  * Comma-separated list of browser origins.
  *
- * Each entry must be a full origin including the scheme, because CORS compares
- * them against the browser's `Origin` header verbatim. "example.vercel.app"
- * never matches "https://example.vercel.app", and the failure is invisible from
- * the server side: the API starts, login appears to succeed, and then every
- * subsequent request is blocked by the browser. Rejecting it at boot turns a
- * baffling runtime symptom into a startup error that names the fix.
+ * CORS compares these against the browser's `Origin` header verbatim, so
+ * "example.vercel.app" never matches "https://example.vercel.app". The failure
+ * is invisible server-side: the API starts, login appears to succeed, and every
+ * request after it is blocked by the browser.
+ *
+ * This value is typed into a hosting dashboard, where the scheme is dropped
+ * constantly, and a bare hostname has exactly one sensible reading. So it is
+ * repaired rather than rejected - refusing to boot turned a one-character
+ * omission into a failed deploy, which is a worse outcome than the bug it was
+ * guarding against. Entries that cannot be parsed at all are dropped with a
+ * warning, since serving with a silently wrong allowlist helps nobody either.
  */
-const originList = csvList.superRefine((origins, ctx) => {
-  for (const origin of origins) {
-    let parsed: URL;
+function normaliseOrigins(entries: string[]): string[] {
+  const out: string[] = [];
+
+  for (const entry of entries) {
+    const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(entry);
+    const candidate = hasScheme ? entry : 'https://' + entry;
+
     try {
-      parsed = new URL(origin);
+      const { origin } = new URL(candidate);
+      if (origin === 'null') throw new Error('opaque origin');
+      if (origin !== entry) {
+        console.warn(
+          '[env] FRONTEND_URL entry "' + entry + '" normalised to "' + origin + '".',
+        );
+      }
+      out.push(origin);
     } catch {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `"${origin}" is not a full origin. Include the scheme, e.g. https://${origin}`,
-      });
-      continue;
-    }
-    if (parsed.pathname !== '/' || origin.endsWith('/')) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `"${origin}" must be an origin only - no trailing slash or path, e.g. ${parsed.origin}`,
-      });
+      console.warn('[env] Ignoring FRONTEND_URL entry "' + entry + '": not a valid origin.');
     }
   }
-});
+
+  return out;
+}
+
+const originList = csvList.transform(normaliseOrigins);
 
 const booleanish = z
   .enum(['true', 'false', '1', '0'])
