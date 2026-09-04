@@ -21,6 +21,19 @@ set -e
 
 npx prisma migrate deploy
 
+# Optional seed, for hosts with no shell to run it by hand. Free Render
+# instances have neither SSH nor one-off jobs, so without this the deployed app
+# has no demo account at all - which contradicts what the README tells a
+# reviewer to sign in with.
+#
+# Deliberately not under `set -e`: the seed provisions Ethereal mailboxes over
+# the network, and a transient failure there must not stop the API from
+# starting. It is idempotent, so running it on every boot is harmless.
+if [ "${RUN_SEED}" = "true" ]; then
+  echo "==> RUN_SEED=true, seeding demo data"
+  node dist/scripts/seed.js || echo "==> Seed failed; continuing without it"
+fi
+
 # exec so the app becomes PID 1 and receives SIGTERM directly - otherwise the
 # graceful shutdown that waits for in-flight sends never runs.
 exec node "${APP_ENTRYPOINT:-dist/server.js}"

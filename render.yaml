@@ -82,6 +82,11 @@ services:
         value: demo@outboxlab.dev
       - key: DEMO_PASSWORD
         sync: false
+      # Seeds the demo account and two Ethereal mailboxes on boot. Free
+      # instances have no shell to run the seed by hand, so without this the
+      # deployed app has no account to sign in with. Idempotent.
+      - key: RUN_SEED
+        value: "true"
       - key: BULL_BOARD_USER
         value: admin
       - key: BULL_BOARD_PASSWORD
