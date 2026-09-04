@@ -24,8 +24,21 @@ import type {
   User,
 } from "./types";
 
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || "http://localhost:5000";
+/**
+ * What fetch and EventSource actually call.
+ *
+ * Empty on purpose: every request goes to this app's own origin and a Next.js
+ * rewrite forwards it to the API, which keeps the session cookie first-party.
+ * See the `rewrites()` block in next.config.ts for why that matters.
+ */
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+
+/**
+ * Absolute URL of the backend. Only for links a human opens in a new tab -
+ * Bull Board, /metrics - which are not proxied and must resolve on their own.
+ */
+export const API_ORIGIN =
+  process.env.NEXT_PUBLIC_API_ORIGIN?.replace(/\/$/, "") || "http://localhost:5000";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -49,7 +62,11 @@ interface RequestOptions {
 }
 
 function buildUrl(path: string, query?: RequestOptions["query"]): string {
-  const url = new URL(`${API_BASE}${path}`);
+  // API_BASE is empty in the proxied setup, so resolve against the current
+  // origin - `new URL` needs an absolute base, and searchParams below needs a
+  // URL. Server-side there is no window, so fall back to the real backend.
+  const base = API_BASE || (typeof window === "undefined" ? API_ORIGIN : window.location.origin);
+  const url = new URL(`${base}${path}`);
   if (query) {
     for (const [k, v] of Object.entries(query)) {
       if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
@@ -75,7 +92,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     throw new ApiError(
       0,
       "NETWORK_ERROR",
-      `Cannot reach the API at ${API_BASE}. Is the backend running?`,
+      `Cannot reach the API at ${API_ORIGIN}. Is the backend running?`,
       err,
     );
   }

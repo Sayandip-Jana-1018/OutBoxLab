@@ -4,17 +4,17 @@ import type { NextConfig } from "next";
 import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 
 /**
+ * Resolves the absolute URL of the OutboxLab API.
+ *
  * The monorepo keeps a single `.env` at the repository root so the API, the
  * worker and this app can never disagree about the port the backend is on.
- *
  * Next only auto-loads `.env` files from its own directory, so the root file is
- * parsed here and its NEXT_PUBLIC_* keys are inlined at build time. Values
- * already present in the real environment win, which keeps CI and container
- * overrides working.
+ * parsed here. A real environment variable always beats the file, which keeps
+ * Vercel and container overrides working.
  */
-function loadRootPublicEnv(): Record<string, string> {
+function resolveApiOrigin(): string {
   const rootEnv = path.resolve(__dirname, "../.env");
-  const out: Record<string, string> = {};
+  const fromFile: Record<string, string> = {};
 
   if (fs.existsSync(rootEnv)) {
     for (const rawLine of fs.readFileSync(rootEnv, "utf8").split(/\r?\n/)) {
@@ -25,7 +25,7 @@ function loadRootPublicEnv(): Record<string, string> {
       if (eq === -1) continue;
 
       const key = line.slice(0, eq).trim();
-      if (!key.startsWith("NEXT_PUBLIC_")) continue;
+      if (key !== "NEXT_PUBLIC_API_URL" && key !== "API_PROXY_TARGET") continue;
 
       // Strip matching surrounding quotes, if any.
       const value = line
@@ -33,48 +33,36 @@ function loadRootPublicEnv(): Record<string, string> {
         .trim()
         .replace(/^(['"])(.*)\1$/, "$2");
 
-      if (value) out[key] = value;
+      if (value) fromFile[key] = value;
     }
   }
 
-  // A real environment variable always beats the file.
-  for (const key of Object.keys(out)) {
-    const fromProcess = process.env[key];
-    if (fromProcess) out[key] = fromProcess;
-  }
-
-  // Guarantee the API URL is always defined so the client never falls back to
-  // a same-origin request that would 404.
-  if (!out.NEXT_PUBLIC_API_URL) {
-    out.NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || "";
-  }
+  const origin = (
+    process.env.API_PROXY_TARGET ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    fromFile.API_PROXY_TARGET ||
+    fromFile.NEXT_PUBLIC_API_URL ||
+    ""
+  ).replace(/\/$/, "");
 
   // A hosted build has no repository-root .env to read, so the value must come
   // from the platform. Defaulting to localhost there would produce a build that
-  // looks successful and is completely broken for every visitor, so fail now
-  // with a message naming the fix rather than shipping it.
+  // looks successful and is completely broken for every visitor - their browser
+  // resolves localhost to their own machine - so fail now, naming the fix.
   const isHosted = Boolean(process.env.VERCEL || process.env.CI);
-  const looksLocal = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/i.test(
-    out.NEXT_PUBLIC_API_URL,
-  );
+  const looksLocal = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/i.test(origin);
 
-  if (isHosted && (!out.NEXT_PUBLIC_API_URL || looksLocal)) {
-    // A localhost URL is as broken as a missing one here: it would build
-    // cleanly and then fail for every visitor, since their browser resolves
-    // localhost to their own machine. Fail now, naming the fix.
+  if (isHosted && (!origin || looksLocal)) {
     throw new Error(
-      `NEXT_PUBLIC_API_URL is ${
-        out.NEXT_PUBLIC_API_URL ? `"${out.NEXT_PUBLIC_API_URL}", which is not reachable from a browser` : "not set"
-      }. Set it in your hosting provider's environment variables to the public ` +
-        "URL of the OutboxLab API, e.g. https://outboxlab-api.onrender.com",
+      `The API URL is ${
+        origin ? `"${origin}", which is not reachable from a browser` : "not set"
+      }. Set NEXT_PUBLIC_API_URL in your hosting provider's environment ` +
+        "variables to the public URL of the OutboxLab API, e.g. " +
+        "https://outboxlab-api.onrender.com",
     );
   }
 
-  if (!out.NEXT_PUBLIC_API_URL) {
-    out.NEXT_PUBLIC_API_URL = "http://localhost:5000";
-  }
-
-  return out;
+  return origin || "http://localhost:5000";
 }
 
 /**
@@ -105,9 +93,42 @@ export default function config(phase: string): NextConfig {
     process.env.NEXT_DIST_DIR ??
     (isHosted || phase === PHASE_DEVELOPMENT_SERVER ? ".next" : ".next-build");
 
+  const apiOrigin = resolveApiOrigin();
+
   return {
     reactStrictMode: true,
     distDir,
-    env: loadRootPublicEnv(),
+
+    env: {
+      /**
+       * Deliberately empty: the browser talks to this app's own origin and the
+       * rewrite below forwards to the API. Set explicitly so a stale value in
+       * the repository-root .env cannot leak an absolute URL into the bundle.
+       */
+      NEXT_PUBLIC_API_URL: "",
+      /** Absolute, for the few links a human opens directly (Bull Board, metrics). */
+      NEXT_PUBLIC_API_ORIGIN: apiOrigin,
+    },
+
+    /**
+     * Proxy the API through this origin so the session cookie is first-party.
+     *
+     * The frontend and the API live on unrelated domains in production
+     * (*.vercel.app and *.onrender.com). A cookie set by the API is therefore a
+     * third-party cookie, and Chrome blocks those by default - so the browser
+     * silently dropped the Set-Cookie on login, every subsequent request was
+     * unauthenticated, and the app bounced straight back to the sign-in page.
+     * No combination of SameSite=None, Secure and CORS can fix that; the
+     * browser is not asking the server's opinion.
+     *
+     * Routing through this origin makes the cookie first-party, which no
+     * browser blocks, and drops the CORS preflight entirely. It applies in
+     * development too - localhost:3000 and localhost:5000 are same-site, so
+     * dev never reproduced the failure and the bug only ever appeared in
+     * production.
+     */
+    async rewrites() {
+      return [{ source: "/api/:path*", destination: `${apiOrigin}/api/:path*` }];
+    },
   };
 }

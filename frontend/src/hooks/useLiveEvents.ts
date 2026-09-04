@@ -16,9 +16,13 @@ interface UseLiveEventsOptions {
 /**
  * Subscribe to the backend's per-user SSE stream.
  *
- * `EventSource` reconnects on its own, but it cannot send cookies cross-origin
- * unless `withCredentials` is set, and it gives no "connected" signal, so this
- * hook layers on:
+ * The stream is same-origin - a Next.js rewrite proxies it to the API - so the
+ * session cookie rides along normally. `withCredentials` stays set because it
+ * costs nothing and keeps the hook correct if the base URL is ever pointed
+ * straight at the backend again.
+ *
+ * `EventSource` reconnects on its own, but it gives no "connected" signal, so
+ * this hook layers on:
  *   - an explicit connection state for the UI ("Live" / "Reconnecting"),
  *   - a bounded backoff so a dead API is not hammered,
  *   - a heartbeat watchdog: the server sends a comment every 25s, so if 45s

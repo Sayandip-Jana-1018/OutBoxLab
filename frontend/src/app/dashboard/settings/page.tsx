@@ -13,7 +13,7 @@ import {
   Palette,
   Gauge,
 } from "lucide-react";
-import { api, ApiError, API_BASE } from "@/lib/api";
+import { api, ApiError, API_ORIGIN } from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { useThemeColor } from "@/context/theme-context";
 import { useAuth } from "@/context/auth-context";
@@ -250,7 +250,7 @@ export default function SettingsPage() {
         {loading ? (
           <Skeleton className="h-24 w-full" />
         ) : !health ? (
-          <p className="text-sm text-rose-400">The API is not reachable at {API_BASE}.</p>
+          <p className="text-sm text-rose-400">The API is not reachable at {API_ORIGIN}.</p>
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -317,17 +317,17 @@ export default function SettingsPage() {
         )}
 
         <div className="mt-6 flex flex-wrap justify-center gap-2 border-t border-black/10 pt-6 dark:border-white/10">
-          <a href={`${API_BASE}/admin/queues`} target="_blank" rel="noreferrer">
+          <a href={`${API_ORIGIN}/admin/queues`} target="_blank" rel="noreferrer">
             <Button size="sm" variant="outline" icon={<ExternalLink className="h-3.5 w-3.5" />}>
               Bull Board queue inspector
             </Button>
           </a>
-          <a href={`${API_BASE}/api/metrics`} target="_blank" rel="noreferrer">
+          <a href={`${API_ORIGIN}/api/metrics`} target="_blank" rel="noreferrer">
             <Button size="sm" variant="ghost" icon={<ExternalLink className="h-3.5 w-3.5" />}>
               Prometheus metrics
             </Button>
           </a>
-          <a href={`${API_BASE}/api/health`} target="_blank" rel="noreferrer">
+          <a href={`${API_ORIGIN}/api/health`} target="_blank" rel="noreferrer">
             <Button size="sm" variant="ghost" icon={<ExternalLink className="h-3.5 w-3.5" />}>
               Health JSON
             </Button>
