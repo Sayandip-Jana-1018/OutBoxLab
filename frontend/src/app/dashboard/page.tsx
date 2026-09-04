@@ -57,7 +57,42 @@ export default function OverviewPage() {
 
     setStatsFailed(overview.status === "rejected");
     setLoading(false);
+
+    return overview.status === "fulfilled";
   }, []);
+
+  /**
+   * Retry a failed first load instead of stranding the page on an error.
+   *
+   * A sleeping instance - the norm on a free tier - takes the better part of a
+   * minute to wake, and a deploy restarts the API outright. Either way the
+   * first request fails, and without this the banner stays up until someone
+   * manually reloads, even though the API came back seconds later. The SSE
+   * stream already recovers on its own; the counters should not be the one
+   * thing that needs a human.
+   */
+  React.useEffect(() => {
+    if (!statsFailed) return;
+
+    let cancelled = false;
+    let attempt = 0;
+
+    const retry = async () => {
+      if (cancelled || attempt >= 5) return;
+      attempt += 1;
+      const ok = await load();
+      if (!ok && !cancelled) {
+        // 2s, 4s, 8s, 16s, 30s - long enough to cover a cold start.
+        setTimeout(retry, Math.min(2000 * 2 ** attempt, 30_000));
+      }
+    };
+
+    const timer = setTimeout(retry, 2000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [statsFailed, load]);
 
   React.useEffect(() => {
     void load();
@@ -66,7 +101,7 @@ export default function OverviewPage() {
   // Realtime. Refreshes are coalesced so a 500-email burst does not fire 500
   // requests at the API.
   const pending = React.useRef(false);
-  useLiveSubscription(
+  const connection = useLiveSubscription(
     React.useCallback(
       (event) => {
         if (event.type === "ping" || pending.current) return;
@@ -80,6 +115,14 @@ export default function OverviewPage() {
     ),
   );
 
+  // The stream coming back is proof the API is reachable again, so use it to
+  // refresh immediately rather than waiting out the retry backoff.
+  const wasLive = React.useRef(false);
+  React.useEffect(() => {
+    if (connection === "live" && !wasLive.current) void load();
+    wasLive.current = connection === "live";
+  }, [connection, load]);
+
   const totals = stats?.totals;
 
   return (
@@ -87,8 +130,8 @@ export default function OverviewPage() {
       {statsFailed && (
         <div className="mx-auto max-w-xl rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-center">
           <p className="font-sans text-xs leading-relaxed text-rose-300">
-            Could not load the live counters, so the numbers below are not current. Check that the
-            API is reachable and reload.
+            Could not reach the API, so the numbers below are not current. Retrying automatically -
+            a free-tier instance can take up to a minute to wake.
           </p>
         </div>
       )}
