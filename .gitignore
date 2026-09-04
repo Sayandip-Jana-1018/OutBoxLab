@@ -51,6 +51,15 @@ Thumbs.db
 .idea/
 
 # ---------------------------------------------------------------------------
+# Recipient lists
+#
+# Campaign CSVs hold real people's addresses. They are working data, never
+# source, and must not end up in a public repository.
+# ---------------------------------------------------------------------------
+recipients.csv
+*.recipients.csv
+
+# ---------------------------------------------------------------------------
 # Deploy
 # ---------------------------------------------------------------------------
 .vercel

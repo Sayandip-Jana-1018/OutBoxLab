@@ -46,7 +46,32 @@ function loadRootPublicEnv(): Record<string, string> {
   // Guarantee the API URL is always defined so the client never falls back to
   // a same-origin request that would 404.
   if (!out.NEXT_PUBLIC_API_URL) {
-    out.NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+    out.NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+  }
+
+  // A hosted build has no repository-root .env to read, so the value must come
+  // from the platform. Defaulting to localhost there would produce a build that
+  // looks successful and is completely broken for every visitor, so fail now
+  // with a message naming the fix rather than shipping it.
+  const isHosted = Boolean(process.env.VERCEL || process.env.CI);
+  const looksLocal = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:|\/|$)/i.test(
+    out.NEXT_PUBLIC_API_URL,
+  );
+
+  if (isHosted && (!out.NEXT_PUBLIC_API_URL || looksLocal)) {
+    // A localhost URL is as broken as a missing one here: it would build
+    // cleanly and then fail for every visitor, since their browser resolves
+    // localhost to their own machine. Fail now, naming the fix.
+    throw new Error(
+      `NEXT_PUBLIC_API_URL is ${
+        out.NEXT_PUBLIC_API_URL ? `"${out.NEXT_PUBLIC_API_URL}", which is not reachable from a browser` : "not set"
+      }. Set it in your hosting provider's environment variables to the public ` +
+        "URL of the OutboxLab API, e.g. https://outboxlab-api.onrender.com",
+    );
+  }
+
+  if (!out.NEXT_PUBLIC_API_URL) {
+    out.NEXT_PUBLIC_API_URL = "http://localhost:5000";
   }
 
   return out;
@@ -71,9 +96,18 @@ function loadRootPublicEnv(): Record<string, string> {
  * build` is always safe to run while `npm run dev` is going.
  */
 export default function config(phase: string): NextConfig {
+  // Hosted builds keep the conventional `.next`. Vercel and other platforms
+  // detect Next.js by that directory, and there is no dev server alongside a
+  // CI build to collide with - the split above only matters on a developer's
+  // machine, where both run at once.
+  const isHosted = Boolean(process.env.VERCEL || process.env.CI);
+  const distDir =
+    process.env.NEXT_DIST_DIR ??
+    (isHosted || phase === PHASE_DEVELOPMENT_SERVER ? ".next" : ".next-build");
+
   return {
     reactStrictMode: true,
-    distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next" : ".next-build",
+    distDir,
     env: loadRootPublicEnv(),
   };
 }

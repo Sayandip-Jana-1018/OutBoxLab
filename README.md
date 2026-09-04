@@ -718,6 +718,7 @@ A timestamped walkthrough for recording, with the exact commands, is in
 - [`docs/API.md`](docs/API.md) — full endpoint reference with payloads
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) — the engineering decision log
 - [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) — recording script
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — hosting: Vercel for the frontend, Render for the API, worker, Postgres and Redis
 
 ---
 

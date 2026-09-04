@@ -1,0 +1,113 @@
+# ---------------------------------------------------------------------------
+# OutboxLab on Render - API, worker, Postgres and Redis in one blueprint.
+#
+# The frontend is NOT here: Next.js belongs on Vercel. Everything in this file
+# is the part that cannot run serverless - a worker that must stay alive
+# between jobs, and an SSE endpoint that holds connections open for minutes.
+#
+#   Render dashboard -> New -> Blueprint -> point at this repo
+#
+# Secrets are NOT in this file. `sync: false` means Render prompts for the
+# value on first deploy and stores it encrypted; `generateValue: true` means
+# Render generates it and never shows it to anyone.
+# ---------------------------------------------------------------------------
+
+databases:
+  - name: outboxlab-postgres
+    databaseName: outboxlab
+    user: outboxlab
+    plan: free
+
+services:
+  # --- Redis (BullMQ queue, rate-limit counters, pacer, pub/sub) ----------
+  - type: keyvalue
+    name: outboxlab-redis
+    plan: free
+    ipAllowList: []          # private network only
+    # BullMQ stores durable job state; evicting it would silently drop mail.
+    # Postgres can rebuild the queue, but eviction should never be routine.
+    maxmemoryPolicy: noeviction
+
+  # --- API ---------------------------------------------------------------
+  - type: web
+    name: outboxlab-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    # Migrations run once per deploy, before the new instance takes traffic.
+    preDeployCommand: npx prisma migrate deploy
+    dockerCommand: node dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "5000"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: outboxlab-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: outboxlab-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true          # never printed, never committed
+      - key: COOKIE_SECURE
+        value: "true"                # required: the frontend is on another origin over HTTPS
+      - key: APP_URL
+        sync: false                  # https://outboxlab-api.onrender.com
+      - key: FRONTEND_URL
+        sync: false                  # https://<your-app>.vercel.app
+      - key: DEMO_EMAIL
+        value: demo@outboxlab.dev
+      - key: DEMO_PASSWORD
+        sync: false
+      - key: BULL_BOARD_USER
+        value: admin
+      - key: BULL_BOARD_PASSWORD
+        generateValue: true
+      - key: ENABLE_TIME_MACHINE
+        value: "false"               # demo-only; it clears live quota buckets
+      - key: WORKER_CONCURRENCY
+        value: "5"
+      - key: RATE_WINDOW_MS
+        value: "3600000"
+
+  # --- Worker ------------------------------------------------------------
+  # A background worker, not a web service: it holds no port and must keep
+  # running between jobs. This is precisely what a serverless platform cannot
+  # host, and why the backend does not go on Vercel.
+  - type: worker
+    name: outboxlab-worker
+    runtime: docker
+    plan: starter                    # free web services sleep; a worker must not
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerCommand: node dist/worker.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: outboxlab-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: outboxlab-redis
+          property: connectionString
+      # Must match the API's, or sessions issued by one are rejected by the other.
+      - key: JWT_SECRET
+        fromService:
+          type: web
+          name: outboxlab-api
+          envVarKey: JWT_SECRET
+      - key: WORKER_CONCURRENCY
+        value: "5"
+      - key: RATE_WINDOW_MS
+        value: "3600000"
+      - key: SWEEPER_INTERVAL_MS
+        value: "60000"
