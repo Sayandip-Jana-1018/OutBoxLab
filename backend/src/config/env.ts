@@ -31,6 +31,37 @@ const csvList = z
       .filter(Boolean),
   );
 
+/**
+ * Comma-separated list of browser origins.
+ *
+ * Each entry must be a full origin including the scheme, because CORS compares
+ * them against the browser's `Origin` header verbatim. "example.vercel.app"
+ * never matches "https://example.vercel.app", and the failure is invisible from
+ * the server side: the API starts, login appears to succeed, and then every
+ * subsequent request is blocked by the browser. Rejecting it at boot turns a
+ * baffling runtime symptom into a startup error that names the fix.
+ */
+const originList = csvList.superRefine((origins, ctx) => {
+  for (const origin of origins) {
+    let parsed: URL;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `"${origin}" is not a full origin. Include the scheme, e.g. https://${origin}`,
+      });
+      continue;
+    }
+    if (parsed.pathname !== '/' || origin.endsWith('/')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `"${origin}" must be an origin only - no trailing slash or path, e.g. ${parsed.origin}`,
+      });
+    }
+  }
+});
+
 const booleanish = z
   .enum(['true', 'false', '1', '0'])
   .transform((value) => value === 'true' || value === '1');
@@ -40,7 +71,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(5000),
   APP_URL: z.string().url().default('http://localhost:5000'),
-  FRONTEND_URL: csvList.default('http://localhost:3000'),
+  FRONTEND_URL: originList.default('http://localhost:3000'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 
   // --- Datastores ----------------------------------------------------------
