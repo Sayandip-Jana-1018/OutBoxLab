@@ -41,37 +41,49 @@ generates one and never displays it. Nothing to copy.
 
 ## 2. Backend, Postgres and Redis on Render
 
+**Use the Blueprint flow, not "New Web Service".** The manual flow creates one
+service at a time and leaves you hand-typing every environment variable across
+four resources. `render.yaml` declares all of them, wires the database and Redis
+URLs automatically, and generates the secrets.
+
 1. Push this repository to GitHub.
-2. Render dashboard → **New** → **Blueprint** → select the repo.
-3. Render reads `render.yaml` and creates four resources: `outboxlab-postgres`,
-   `outboxlab-redis`, `outboxlab-api`, `outboxlab-worker`.
-4. It prompts for the values marked `sync: false`:
+2. Render dashboard → **New** → **Blueprint** → select the repo → **Apply**.
+3. Render reads `render.yaml` and creates `outboxlab-postgres`,
+   `outboxlab-redis` and `outboxlab-api`.
+4. It prompts only for the values marked `sync: false`:
 
-   | Variable | Value |
+   | Variable | What to enter |
    | --- | --- |
-   | `APP_URL` | the API's own URL, e.g. `https://outboxlab-api.onrender.com` |
-   | `FRONTEND_URL` | your Vercel URL — fill this in after step 3 and redeploy |
-   | `DEMO_PASSWORD` | any password for the seeded demo account |
+   | `APP_URL` | The API's own URL. Render shows it as it creates the service — `https://outboxlab-api.onrender.com`. |
+   | `FRONTEND_URL` | Your Vercel URL. You do not have it yet — put `https://localhost` for now and correct it in step 3. |
+   | `DEMO_PASSWORD` | Any password for the seeded demo account. |
 
-5. Deploy. `preDeployCommand` runs `prisma migrate deploy` before the new
-   instance takes traffic, so the schema is created automatically.
-6. Confirm `https://<api>.onrender.com/api/health` returns `"status": "ok"`
-   with both dependencies `up`.
+5. Deploy. Migrations run as part of the start command, so the schema is created
+   on first boot.
+6. Confirm `https://<api>.onrender.com/api/health` returns `"status": "ok"` with
+   both dependencies `up`.
 
-> **The worker is on the `starter` plan deliberately.** Render's free web
-> services sleep when idle; a worker that sleeps stops delivering mail. The API
-> may stay free — a sleeping API only delays the dashboard, and the boot
-> reconciler rebuilds the queue when it wakes.
+### Why one service instead of two
 
-### Seeding the demo account
+The README describes the API and worker as separate processes, and that is the
+better shape. Render's free tier only offers web services — a background worker
+is paid — so the blueprint runs both in one process via `dist/server.js`.
+Deploying only the API would look perfectly healthy and never deliver anything.
 
-Optional. Render shell on `outboxlab-api`:
+On a paid plan, split them: change the web service's command to
+`node dist/index.js` and add a `type: worker` service running
+`node dist/worker.js`. Nothing else changes.
 
-```bash
-npx prisma db seed
-```
+### What free tier costs you
 
----
+- **The instance sleeps when idle.** A sleeping instance delivers nothing.
+  Scheduled mail is not lost — on wake the boot reconciler re-enqueues
+  everything Postgres still considers pending, and anything overdue goes out
+  immediately — but it is late by however long the instance was down. For a
+  portfolio deployment that is usually fine; for real mail it is not.
+- **Free Postgres expires after 30 days.**
+- **No shell access**, so seed via the API by registering an account rather than
+  running `prisma db seed`.
 
 ## 3. Frontend on Vercel
 

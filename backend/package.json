@@ -19,7 +19,9 @@
     "db:studio": "dotenv -e ../.env -- prisma studio",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:burst": "tsx src/scripts/burst-test.ts"
+    "test:burst": "tsx src/scripts/burst-test.ts",
+    "start:all": "node dist/server.js",
+    "start:migrate-all": "prisma migrate deploy && node dist/server.js"
   },
   "prisma": {
     "seed": "tsx src/scripts/seed.ts"

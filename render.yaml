@@ -1,15 +1,29 @@
 # ---------------------------------------------------------------------------
-# OutboxLab on Render - API, worker, Postgres and Redis in one blueprint.
+# OutboxLab on Render.
 #
-# The frontend is NOT here: Next.js belongs on Vercel. Everything in this file
-# is the part that cannot run serverless - a worker that must stay alive
-# between jobs, and an SSE endpoint that holds connections open for minutes.
+# The frontend is NOT here - Next.js goes on Vercel. This file declares the
+# part that cannot run serverless: a worker that must stay alive between jobs,
+# and an SSE endpoint that holds connections open for minutes.
 #
 #   Render dashboard -> New -> Blueprint -> point at this repo
 #
-# Secrets are NOT in this file. `sync: false` means Render prompts for the
-# value on first deploy and stores it encrypted; `generateValue: true` means
-# Render generates it and never shows it to anyone.
+# Secrets are not in this file. `generateValue: true` has Render mint a value
+# nobody ever sees; `sync: false` prompts for it on first deploy and stores it
+# encrypted.
+#
+# ---------------------------------------------------------------------------
+# Free tier caveats, which shape the whole file
+# ---------------------------------------------------------------------------
+#   * Background workers are a paid service type on Render. The API and worker
+#     therefore run in ONE web service here (dist/server.js), which is why that
+#     entrypoint exists. Split them - `node dist/index.js` plus a `type: worker`
+#     - the moment you are on a paid plan.
+#   * Free instances have no one-off jobs, so `preDeployCommand` is unavailable
+#     and migrations run as part of the start command instead.
+#   * Free instances sleep when idle. A sleeping instance delivers nothing;
+#     on wake the boot reconciler re-enqueues everything still pending, so
+#     nothing is lost, it is only late.
+#   * Render's free Postgres expires after 30 days.
 # ---------------------------------------------------------------------------
 
 databases:
@@ -19,26 +33,29 @@ databases:
     plan: free
 
 services:
-  # --- Redis (BullMQ queue, rate-limit counters, pacer, pub/sub) ----------
+  # --- Redis: BullMQ queue, quota counters, pacer, pub/sub ---------------
   - type: keyvalue
     name: outboxlab-redis
     plan: free
-    ipAllowList: []          # private network only
-    # BullMQ stores durable job state; evicting it would silently drop mail.
-    # Postgres can rebuild the queue, but eviction should never be routine.
+    ipAllowList: []              # private network only
+    # BullMQ holds durable job state here. Eviction would silently drop mail;
+    # Postgres can rebuild the queue, but that should never be routine.
     maxmemoryPolicy: noeviction
 
-  # --- API ---------------------------------------------------------------
+  # --- API + worker (single service on free) -----------------------------
   - type: web
     name: outboxlab-api
     runtime: docker
     plan: free
-    rootDir: backend
-    dockerfilePath: ./Dockerfile
+    # Paths are relative to the repository root, so the build context is stated
+    # explicitly rather than relying on rootDir semantics.
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     healthCheckPath: /api/health
-    # Migrations run once per deploy, before the new instance takes traffic.
-    preDeployCommand: npx prisma migrate deploy
-    dockerCommand: node dist/index.js
+    # Migrations run at start because free instances cannot run a pre-deploy
+    # step. `migrate deploy` is idempotent, so repeating it on every boot is
+    # safe.
+    dockerCommand: sh -c "npx prisma migrate deploy && node dist/server.js"
     envVars:
       - key: NODE_ENV
         value: production
@@ -54,13 +71,13 @@ services:
           name: outboxlab-redis
           property: connectionString
       - key: JWT_SECRET
-        generateValue: true          # never printed, never committed
+        generateValue: true      # never printed, never committed
       - key: COOKIE_SECURE
-        value: "true"                # required: the frontend is on another origin over HTTPS
+        value: "true"            # the frontend is a different origin, over HTTPS
       - key: APP_URL
-        sync: false                  # https://outboxlab-api.onrender.com
+        sync: false              # https://outboxlab-api.onrender.com
       - key: FRONTEND_URL
-        sync: false                  # https://<your-app>.vercel.app
+        sync: false              # https://<your-app>.vercel.app
       - key: DEMO_EMAIL
         value: demo@outboxlab.dev
       - key: DEMO_PASSWORD
@@ -70,41 +87,7 @@ services:
       - key: BULL_BOARD_PASSWORD
         generateValue: true
       - key: ENABLE_TIME_MACHINE
-        value: "false"               # demo-only; it clears live quota buckets
-      - key: WORKER_CONCURRENCY
-        value: "5"
-      - key: RATE_WINDOW_MS
-        value: "3600000"
-
-  # --- Worker ------------------------------------------------------------
-  # A background worker, not a web service: it holds no port and must keep
-  # running between jobs. This is precisely what a serverless platform cannot
-  # host, and why the backend does not go on Vercel.
-  - type: worker
-    name: outboxlab-worker
-    runtime: docker
-    plan: starter                    # free web services sleep; a worker must not
-    rootDir: backend
-    dockerfilePath: ./Dockerfile
-    dockerCommand: node dist/worker.js
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: outboxlab-postgres
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: outboxlab-redis
-          property: connectionString
-      # Must match the API's, or sessions issued by one are rejected by the other.
-      - key: JWT_SECRET
-        fromService:
-          type: web
-          name: outboxlab-api
-          envVarKey: JWT_SECRET
+        value: "false"           # demo-only: it clears live quota buckets
       - key: WORKER_CONCURRENCY
         value: "5"
       - key: RATE_WINDOW_MS
