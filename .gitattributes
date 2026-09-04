@@ -1,0 +1,8 @@
+# Shell scripts and Dockerfiles must use LF regardless of the checkout platform.
+# A CRLF line ending turns the shebang into `#!/bin/sh\r`, which Linux tries to
+# execute as a program literally named "sh\r" and fails with exit 127 - the
+# exact failure that made the first Render deploy die.
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf

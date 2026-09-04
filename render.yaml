@@ -52,10 +52,10 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /api/health
-    # Migrations run at start because free instances cannot run a pre-deploy
-    # step. `migrate deploy` is idempotent, so repeating it on every boot is
-    # safe.
-    dockerCommand: sh -c "npx prisma migrate deploy && node dist/server.js"
+    # No dockerCommand: the image's entrypoint script runs the migration and
+    # then the app. Render exec's this field rather than evaluating it as a
+    # shell line, so a `sh -c "a && b"` one-liner here is looked up as a single
+    # binary with that name and exits 127.
     envVars:
       - key: NODE_ENV
         value: production
